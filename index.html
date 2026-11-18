@@ -1214,6 +1214,7 @@
           <button type="button" class="sub-tab-btn" id="subtab-btn-expense" onclick="switchTxSubtab('expense')">💸 2. รายจ่าย / จ่ายบิล</button>
           <button type="button" class="sub-tab-btn" id="subtab-btn-vault" onclick="switchTxSubtab('vault')">🏦 3. คลังเงินเก็บ &amp; การลงทุน</button>
           <button type="button" class="sub-tab-btn" id="subtab-btn-tax" onclick="switchTxSubtab('tax')">🧾 4. ลดหย่อน &amp; ภาษีทั้งปี</button>
+          <button type="button" class="sub-tab-btn" id="subtab-btn-debts" onclick="switchTxSubtab('debts')">🏷️ 5. Tag หนี้ &amp; บิลประจำ</button>
         </div>
 
         <!-- SUBTAB 1: INCOME (UNIFIED FORM + LOG) -->
@@ -1283,19 +1284,14 @@
                     <input type="date" id="exp-date" required />
                   </div>
                   <div class="form-group full">
-                    <label for="exp-category">หมวดหมู่รายจ่าย</label>
-                    <select id="exp-category">
-                      <option value="ชำระหนี้ / บัตรเครดิต">💳 ชำระหนี้ / บัตรเครดิต</option>
-                      <option value="ค่าเบี้ยประกันชีวิต">🛡️ ค่าเบี้ยประกันชีวิต</option>
-                      <option value="ค่าเทอม / ค่าเรียน">🎓 ค่าเทอม / ค่าเรียน</option>
-                      <option value="ค่าน้ำ / ค่าไฟ">💡 ค่าน้ำ / ค่าไฟ</option>
-                      <option value="ค่าเน็ต / ค่าโทรศัพท์มือถือ">📱 ค่าเน็ต / ค่าโทรศัพท์มือถือ</option>
-                      <option value="ค่าที่พัก / ค่าเช่า / ผ่อนบ้าน">🏠 ค่าที่พัก / ค่าเช่า / ผ่อนบ้าน</option>
-                      <option value="ค่ากิน / อาหารและเครื่องดื่ม">🍜 ค่ากิน / อาหารและเครื่องดื่ม</option>
-                      <option value="ค่าเดินทาง">🚌 ค่าเดินทาง</option>
-                      <option value="ช้อปปิ้ง / บันเทิง">🛍️ ช้อปปิ้ง / บันเทิง</option>
-                      <option value="อื่นๆ">📦 อื่นๆ</option>
+                    <label for="exp-category">หมวดหมู่รายจ่าย / Tag หนี้ &amp; บิล</label>
+                    <select id="exp-category" onchange="toggleCustomExpenseCategory()">
+                      <option value="อื่นๆ">📦 อื่นๆ (พิมพ์ระบุเอง)</option>
                     </select>
+                  </div>
+                  <div class="form-group full hidden" id="exp-custom-cat-wrap">
+                    <label for="exp-custom-category">ระบุหมวดหมู่เอง *</label>
+                    <input type="text" id="exp-custom-category" placeholder="เช่น ค่าซ่อมรถ, ซื้อของเข้าบ้าน" />
                   </div>
                   <div class="form-group full">
                     <label for="exp-note">รายละเอียดเพิ่มเติม</label>
@@ -1401,6 +1397,44 @@
             <div class="rpg-panel rpg-panel-gold">
               <div class="wood-pill-title">📊 ผลคำนวณภาษีเงินได้บุคคลธรรมดา (ไทย)</div>
               <div id="tax-summary-box"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 5: DEBT & RECURRING BILL TAGS -->
+        <div id="tx-sub-debts" class="hidden">
+          <div class="two-col">
+            <div class="rpg-panel">
+              <div class="wood-pill-title">🏷️ เพิ่ม Tag หนี้สิน &amp; บิลเรียกเก็บประจำ</div>
+              <form onsubmit="handleAddDebtTag(event)">
+                <div class="form-grid">
+                  <div class="form-group full">
+                    <label for="debt-tag-name">ชื่อหัวข้อ / Tag (พิมพ์เองได้เลย) *</label>
+                    <input type="text" id="debt-tag-name" placeholder="เช่น หนี้บัตรเครดิต KTC, ค่างวดรถ Suzuki Swift, ค่าไฟ, ค่าเน็ต" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="debt-tag-balance">ยอดหนี้คงเหลือปัจจุบัน (ไม่บังคับ)</label>
+                    <input type="number" id="debt-tag-balance" min="0" step="0.01" placeholder="เว้นว่างได้ถ้าเป็นบิลรายเดือน" />
+                  </div>
+                  <div class="form-group">
+                    <label for="debt-tag-date">วันที่อัปเดต *</label>
+                    <input type="date" id="debt-tag-date" required />
+                  </div>
+                  <div class="form-group full">
+                    <label for="debt-tag-reason">เหตุผล / หมายเหตุการอัปเดต</label>
+                    <input type="text" id="debt-tag-reason" placeholder="เช่น ยอดตั้งต้น, อัปเดตให้ตรงจากดอกเบี้ย" />
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 14px;">💾 บันทึก Tag หนี้ / บิล</button>
+              </form>
+              <div class="info-callout" style="margin-top: 14px; margin-bottom: 0;">
+                💡 Tag ที่สร้างไว้จะไปโผล่ในตัวเลือกของ <strong>"2. รายจ่าย / จ่ายบิล"</strong> อัตโนมัติ และเมื่อบันทึกรายจ่ายเลือก Tag ที่มีก้อนหนี้ ระบบจะหักลดยอดหนี้คงเหลือให้ทันทีครับ
+              </div>
+            </div>
+
+            <div class="rpg-panel">
+              <div class="wood-pill-title">📋 รายการ Tag หนี้ &amp; บิลของคุณ (แก้ไข / ลบได้)</div>
+              <div class="tx-list" id="debt-tag-list"></div>
             </div>
           </div>
         </div>
@@ -2380,6 +2414,7 @@
       document.getElementById('exp-filter-month').value = `${yyyy}-${mm}`;
       document.getElementById('exp-filter-day').value = `${yyyy}-${mm}-${dd}`;
       document.getElementById('rem-date').value = `${yyyy}-${mm}-${dd}`;
+      document.getElementById('debt-tag-date').value = `${yyyy}-${mm}-${dd}`;
 
       syncAiKeyUI();
       renderFloatingReminders();
@@ -2564,19 +2599,23 @@
 
     // TAB 2: TRANSACTION
     function switchTxSubtab(sub) {
-      ['income', 'expense', 'vault', 'tax'].forEach(s => {
+      ['income', 'expense', 'vault', 'tax', 'debts'].forEach(s => {
         document.getElementById(`tx-sub-${s}`).classList.toggle('hidden', s !== sub);
         document.getElementById(`subtab-btn-${s}`).classList.toggle('active', s === sub);
       });
+      if (sub === 'expense') populateExpenseCategoryDropdown();
       if (sub === 'tax') renderTaxTab();
+      if (sub === 'debts') renderDebtTags();
     }
 
     function renderTransactionTab() {
       previewIncomeSSO();
+      populateExpenseCategoryDropdown();
       renderIncomeLog();
       renderExpenses();
       renderVaults();
       renderTaxTab();
+      renderDebtTags();
     }
 
     function previewIncomeSSO() {
@@ -2675,27 +2714,104 @@
         `).join('');
     }
 
+    const DEFAULT_EXPENSE_CATEGORIES = [
+      { value: 'ค่ากิน / อาหารและเครื่องดื่ม', label: '🍜 ค่ากิน / อาหารและเครื่องดื่ม' },
+      { value: 'ค่าเดินทาง', label: '🚌 ค่าเดินทาง' },
+      { value: 'ช้อปปิ้ง / บันเทิง', label: '🛍️ ช้อปปิ้ง / บันเทิง' },
+      { value: 'ค่าที่พัก / ค่าเช่า / ผ่อนบ้าน', label: '🏠 ค่าที่พัก / ค่าเช่า / ผ่อนบ้าน' },
+      { value: 'ค่าน้ำ / ค่าไฟ', label: '💡 ค่าน้ำ / ค่าไฟ' },
+      { value: 'ค่าเน็ต / ค่าโทรศัพท์มือถือ', label: '📱 ค่าเน็ต / ค่าโทรศัพท์มือถือ' },
+      { value: 'ชำระหนี้ / บัตรเครดิต', label: '💳 ชำระหนี้ / บัตรเครดิต' },
+      { value: 'ค่าเบี้ยประกันชีวิต', label: '🛡️ ค่าเบี้ยประกันชีวิต' },
+      { value: 'ค่าเทอม / ค่าเรียน', label: '🎓 ค่าเทอม / ค่าเรียน' }
+    ];
+
+    function toggleCustomExpenseCategory() {
+      const sel = document.getElementById('exp-category');
+      const wrap = document.getElementById('exp-custom-cat-wrap');
+      if (!sel || !wrap) return;
+      wrap.classList.toggle('hidden', sel.value !== 'อื่นๆ');
+    }
+
+    function populateExpenseCategoryDropdown() {
+      const sel = document.getElementById('exp-category');
+      if (!sel) return;
+      const prevVal = sel.value;
+      const u = getCurrentUser();
+      const tags = (u && u.debtTags) ? u.debtTags : [];
+
+      let html = '';
+      if (tags.length > 0) {
+        html += '<optgroup label="🏷️ Tag หนี้สิน &amp; บิลประจำของคุณ">';
+        html += tags.map(t => {
+          const balText = t.balance !== null && t.balance !== undefined
+            ? ` (คงเหลือ ${formatBaht(t.balance)})`
+            : '';
+          return `<option value="tag:${t.id}">🏷️ ${escapeHtml(t.name)}${balText}</option>`;
+        }).join('');
+        html += '</optgroup>';
+      }
+
+      html += '<optgroup label="📦 หมวดหมู่ทั่วไป">';
+      html += DEFAULT_EXPENSE_CATEGORIES.map(c => `<option value="${escapeHtml(c.value)}">${c.label}</option>`).join('');
+      html += '</optgroup>';
+      html += '<option value="อื่นๆ">📦 อื่นๆ (พิมพ์ระบุเอง)</option>';
+
+      sel.innerHTML = html;
+      if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
+        sel.value = prevVal;
+      }
+      toggleCustomExpenseCategory();
+    }
+
     function handleAddExpense(e) {
       e.preventDefault();
       const expAmount = Number(document.getElementById('exp-amount').value);
       const expDate = document.getElementById('exp-date').value;
-      const expCategory = document.getElementById('exp-category').value;
+      const rawCat = document.getElementById('exp-category').value;
       const expNote = document.getElementById('exp-note').value.trim();
+
+      let expCategory = rawCat;
+      let debtTagId = null;
+
+      if (rawCat === 'อื่นๆ') {
+        const custom = document.getElementById('exp-custom-category').value.trim();
+        expCategory = custom || 'อื่นๆ';
+      }
+
       updateCurrentUser(u => {
         u.expenses = u.expenses || [];
+        if (rawCat.startsWith('tag:')) {
+          const tagId = rawCat.slice(4);
+          const tag = (u.debtTags || []).find(t => t.id === tagId);
+          if (tag) {
+            debtTagId = tag.id;
+            expCategory = tag.name;
+            if (tag.balance !== null && tag.balance !== undefined) {
+              tag.balance = Math.max(0, Number(tag.balance) - expAmount);
+              tag.updatedAt = expDate || new Date().toISOString().slice(0, 10);
+              tag.reason = `หักยอดจากรายจ่าย (-${formatBaht(expAmount)})`;
+            }
+          }
+        }
         u.expenses.unshift({
           id: 'exp_' + Date.now(),
           amount: expAmount,
           date: expDate,
           category: expCategory,
+          debtTagId,
           note: expNote
         });
         addPointLog(u, 10, `บันทึกรายจ่าย (${expCategory})`, (expDate || '').slice(0, 7) || getCurrentMonthKey());
       });
       document.getElementById('exp-amount').value = '';
       document.getElementById('exp-note').value = '';
-      showToast('💸 บันทึกรายจ่ายเรียบร้อย');
+      const customEl = document.getElementById('exp-custom-category');
+      if (customEl) customEl.value = '';
+      showToast(debtTagId ? '💸 บันทึกรายจ่ายและหักยอดหนี้เรียบร้อย' : '💸 บันทึกรายจ่ายเรียบร้อย');
+      populateExpenseCategoryDropdown();
       renderExpenses();
+      renderDebtTags();
     }
 
     function editExpense(id) {
@@ -2708,21 +2824,43 @@
       updateCurrentUser(user => {
         const target = user.expenses.find(x => x.id === id);
         if (!target) return;
-        target.amount = Number(nextAmt);
+        const oldAmt = Number(target.amount || 0);
+        const newAmt = Number(nextAmt);
+        if (target.debtTagId) {
+          const tag = (user.debtTags || []).find(t => t.id === target.debtTagId);
+          if (tag && tag.balance !== null && tag.balance !== undefined) {
+            tag.balance = Math.max(0, Number(tag.balance) + oldAmt - newAmt);
+            tag.updatedAt = new Date().toISOString().slice(0, 10);
+          }
+        }
+        target.amount = newAmt;
         if (nextNote !== null) target.note = nextNote.trim();
       });
       showToast('💾 แก้ไขรายการรายจ่ายเรียบร้อย');
+      populateExpenseCategoryDropdown();
       renderExpenses();
+      renderDebtTags();
     }
 
     function deleteExpense(id) {
       updateCurrentUser(u => {
         const target = (u.expenses || []).find(x => x.id === id);
         u.expenses = (u.expenses || []).filter(x => x.id !== id);
-        if (target) addPointLog(u, -10, `ลบรายการรายจ่าย (${target.category || 'รายจ่าย'})`);
+        if (target) {
+          if (target.debtTagId) {
+            const tag = (u.debtTags || []).find(t => t.id === target.debtTagId);
+            if (tag && tag.balance !== null && tag.balance !== undefined) {
+              tag.balance = Number(tag.balance) + Number(target.amount || 0);
+              tag.updatedAt = new Date().toISOString().slice(0, 10);
+            }
+          }
+          addPointLog(u, -10, `ลบรายการรายจ่าย (${target.category || 'รายจ่าย'})`);
+        }
       });
       showToast('🗑️ ลบรายการรายจ่ายแล้ว (-10 คะแนน)');
+      populateExpenseCategoryDropdown();
       renderExpenses();
+      renderDebtTags();
     }
 
     function renderExpenses() {
@@ -2847,6 +2985,114 @@
       });
       showToast('🧾 บันทึกลดหย่อนและคำนวณภาษีเรียบร้อย');
       renderTaxTab();
+    }
+
+    // SUBTAB 5: DEBT & RECURRING BILL TAGS
+    function handleAddDebtTag(e) {
+      e.preventDefault();
+      const name = document.getElementById('debt-tag-name').value.trim();
+      const rawBal = document.getElementById('debt-tag-balance').value.trim();
+      const balance = rawBal === '' ? null : Math.max(0, Number(rawBal));
+      const updatedAt = document.getElementById('debt-tag-date').value || new Date().toISOString().slice(0, 10);
+      const reason = document.getElementById('debt-tag-reason').value.trim();
+      if (!name) return;
+
+      updateCurrentUser(u => {
+        u.debtTags = u.debtTags || [];
+        u.debtTags.push({
+          id: 'tag_' + Date.now(),
+          name,
+          balance,
+          updatedAt,
+          reason
+        });
+      });
+
+      document.getElementById('debt-tag-name').value = '';
+      document.getElementById('debt-tag-balance').value = '';
+      document.getElementById('debt-tag-reason').value = '';
+      showToast('🏷️ บันทึก Tag หนี้ / บิลเรียบร้อย');
+      populateExpenseCategoryDropdown();
+      renderDebtTags();
+    }
+
+    function editDebtTag(id) {
+      const u = getCurrentUser();
+      const tag = (u.debtTags || []).find(t => t.id === id);
+      if (!tag) return;
+      const nextName = prompt('แก้ไขชื่อ Tag / หัวข้อ:', tag.name);
+      if (nextName === null || !nextName.trim()) return;
+      const curBalStr = tag.balance !== null && tag.balance !== undefined ? String(tag.balance) : '';
+      const nextBalStr = prompt('แก้ไขยอดหนี้คงเหลือ (เว้นว่างได้ถ้าไม่ระบุยอดหนี้):', curBalStr);
+      if (nextBalStr === null) return;
+      const trimmedBal = nextBalStr.trim();
+      if (trimmedBal !== '' && (isNaN(Number(trimmedBal)) || Number(trimmedBal) < 0)) return;
+      const nextDate = prompt('วันที่อัปเดต (YYYY-MM-DD):', tag.updatedAt || new Date().toISOString().slice(0, 10));
+      if (nextDate === null) return;
+      const nextReason = prompt('เหตุผลที่อัปเดต (เช่น อัปเดตให้ตรงจากดอกเบี้ย):', tag.reason || '');
+      if (nextReason === null) return;
+
+      updateCurrentUser(user => {
+        const target = (user.debtTags || []).find(t => t.id === id);
+        if (!target) return;
+        target.name = nextName.trim();
+        target.balance = trimmedBal === '' ? null : Number(trimmedBal);
+        target.updatedAt = nextDate.trim() || new Date().toISOString().slice(0, 10);
+        target.reason = nextReason.trim();
+      });
+
+      showToast('💾 อัปเดต Tag หนี้ / บิลเรียบร้อย');
+      populateExpenseCategoryDropdown();
+      renderDebtTags();
+    }
+
+    function deleteDebtTag(id) {
+      updateCurrentUser(u => {
+        u.debtTags = (u.debtTags || []).filter(t => t.id !== id);
+      });
+      showToast('🗑️ ลบ Tag เรียบร้อยแล้ว');
+      populateExpenseCategoryDropdown();
+      renderDebtTags();
+    }
+
+    function renderDebtTags() {
+      const u = getCurrentUser();
+      if (!u) return;
+      const list = u.debtTags || [];
+      const expenses = u.expenses || [];
+      const el = document.getElementById('debt-tag-list');
+      if (!el) return;
+
+      el.innerHTML = list.length === 0
+        ? '<div style="text-align:center; color:var(--text-muted); padding:24px;">ยังไม่มี Tag หนี้หรือบิลประจำ — เพิ่มทางฝั่งซ้ายเพื่อนำไปเลือกตอนจ่ายบิลได้เลยครับ</div>'
+        : list.map(t => {
+          const paidFromLogs = expenses
+            .filter(e => e.debtTagId === t.id || (!e.debtTagId && e.category === t.name))
+            .reduce((s, e) => s + Number(e.amount || 0), 0);
+          const balHtml = t.balance !== null && t.balance !== undefined
+            ? `<strong class="text-expense">${formatBaht(t.balance)}</strong>`
+            : '<span style="font-size:0.82rem; color:var(--text-muted);">บิลประจำ / ไม่ระบุยอดหนี้</span>';
+          return `
+            <div class="tx-item">
+              <div class="tx-left">
+                <div class="tx-icon">🏷️</div>
+                <div>
+                  <div style="font-weight:600;">${escapeHtml(t.name)}</div>
+                  <div class="tx-meta">
+                    อัปเดต: ${escapeHtml(t.updatedAt || '-')}
+                    ${t.reason ? `• เหตุผล: ${escapeHtml(t.reason)}` : ''}
+                    ${paidFromLogs > 0 ? `• จ่ายแล้วจาก Log: <span class="text-income">${formatBaht(paidFromLogs)}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="tx-right">
+                ${balHtml}
+                <button type="button" class="btn btn-secondary btn-sm" onclick="editDebtTag('${t.id}')">แก้ไข</button>
+                <button type="button" class="btn btn-danger" onclick="deleteDebtTag('${t.id}')">ลบ</button>
+              </div>
+            </div>
+          `;
+        }).join('');
     }
 
     function renderTaxTab() {
