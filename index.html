@@ -1796,8 +1796,8 @@
                 <span class="rank-badge-plus">สูงสุด +25</span>
               </div>
               <div class="rank-rule-card">
-                <div><strong>⚠️ หักแต้มเมื่อขาดวินัย</strong><br/><small style="color:var(--text-muted);">รายจ่ายเกินรายรับ (-20) • มีรายรับแต่ออม &lt; 10% (-10) • ต่ำสุดที่ 0</small></div>
-                <span class="rank-badge-minus">-10 / -20</span>
+                <div><strong>⚠️ หักแต้มเมื่อขาดวินัย (ขั้นบันได)</strong><br/><small style="color:var(--text-muted);">ออม &lt; 10% (-10) • เกินรายรับ ≤20% (-25) • เกิน &gt;20% (-40) • ต่ำสุด 0</small></div>
+                <span class="rank-badge-minus">-10 / -25 / -40</span>
               </div>
               <div class="rank-rule-card">
                 <div><strong>✏️ แก้ไข / ลบรายการได้ฟรี</strong><br/><small style="color:var(--text-muted);">ไม่หัก -10 ตอนลบ แต่ระบบคำนวณแต้มใหม่จากข้อมูลจริงทันที กันปั๊มแต้ม 100%</small></div>
@@ -2289,11 +2289,24 @@
         const vaultBonus = (m === curMonth && hasActiveVault) ? 10 : 0;
         savingPts += vaultBonus;
 
-        // 5) Penalties (floor monthly score at 0)
+        // 5) Penalties (tiered: -10 / -25 / -40, floor monthly score at 0)
         let penaltyPts = 0;
+        let penaltyReason = '';
         if (mIncNet > 0) {
-          if (mExp > mIncNet) penaltyPts -= 20;
-          else if (saveRate < 10) penaltyPts -= 10;
+          if (mExp > mIncNet) {
+            const overAmt = mExp - mIncNet;
+            const overPct = Math.max(1, Math.round((overAmt / mIncNet) * 100));
+            if (overAmt > mIncNet * 0.2) {
+              penaltyPts -= 40;
+              penaltyReason = `ใช้จ่ายเกินรายรับหนัก +${overPct}% (>20%)`;
+            } else {
+              penaltyPts -= 25;
+              penaltyReason = `ใช้จ่ายเกินรายรับ +${overPct}% (≤20%)`;
+            }
+          } else if (saveRate < 10) {
+            penaltyPts -= 10;
+            penaltyReason = 'ออมต่ำกว่า 10% ของรายรับ';
+          }
         }
 
         const actionPts = habitPts + debtPts;
@@ -2315,9 +2328,9 @@
           if (penaltyPts < 0) {
             curBreakdown.push({
               icon: '⚠️',
-              title: mExp > mIncNet ? 'ใช้จ่ายเกินรายรับสุทธิ' : 'ออมต่ำกว่า 10% ของรายรับ',
+              title: penaltyReason,
               delta: penaltyPts,
-              sub: 'คะแนนรายเดือนต่ำสุดที่ 0 (ไม่ติดลบ)'
+              sub: 'หักแบบขั้นบันได • คะแนนรายเดือนต่ำสุดที่ 0 (ไม่ติดลบ)'
             });
           }
         }
