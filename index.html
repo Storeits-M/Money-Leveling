@@ -1452,8 +1452,8 @@
                     <input type="text" id="vault-name" placeholder="เช่น ธนาคาร SCB, หุ้น PTT, ทองคำแท่ง" required />
                   </div>
                   <div class="form-group full">
-                    <label for="vault-balance">จำนวนเงิน / มูลค่าปัจจุบัน (บาท) *</label>
-                    <input type="number" id="vault-balance" min="0" step="0.01" placeholder="เช่น 50000" required />
+                    <label for="vault-balance">จำนวนเงิน / มูลค่าปัจจุบัน (บาท) (เว้นว่างได้ = 0)</label>
+                    <input type="number" id="vault-balance" min="0" step="0.01" placeholder="เช่น 50000 (เว้นว่างได้หากเปิดคลังรอไว้)" />
                   </div>
                   <div class="form-group full">
                     <label for="vault-desc">หมายเหตุ (Description)</label>
@@ -3006,17 +3006,29 @@
       renderIncomeLog();
     }
 
+    function parseMoneyInput(val) {
+      if (val === null || val === undefined) return NaN;
+      const cleaned = String(val).replace(/,/g, '').replace(/฿/g, '').trim();
+      if (!cleaned) return NaN;
+      return Number(cleaned);
+    }
+
     function editIncome(id) {
       const u = getCurrentUser();
       const item = (u.incomes || []).find(x => x.id === id);
       if (!item) return;
       const nextAmt = prompt(`แก้ไขยอดเงินได้ (${item.source}) เดิม ${item.amount} บาท:`, item.amount);
-      if (nextAmt === null || isNaN(Number(nextAmt)) || Number(nextAmt) <= 0) return;
+      if (nextAmt === null) return;
+      const parsedAmt = parseMoneyInput(nextAmt);
+      if (isNaN(parsedAmt) || parsedAmt <= 0) {
+        showToast('⚠️ กรุณากรอกจำนวนเงินที่ถูกต้อง (มากกว่า 0)');
+        return;
+      }
       const nextNote = prompt('แก้ไขรายละเอียดเพิ่มเติม:', item.note || '');
       updateCurrentUser(user => {
         const target = user.incomes.find(x => x.id === id);
         if (!target) return;
-        target.amount = Number(nextAmt);
+        target.amount = parsedAmt;
         target.sso = target.source === 'เงินเดือน' ? calcThaiSSO(target.amount) : 0;
         target.netAmount = Math.max(0, target.amount - target.sso);
         if (nextNote !== null) target.note = nextNote.trim();
@@ -3227,13 +3239,17 @@
       const item = (u.expenses || []).find(x => x.id === id);
       if (!item) return;
       const nextAmt = prompt(`แก้ไขจำนวนเงิน (${item.category}) เดิม ${item.amount} บาท:`, item.amount);
-      if (nextAmt === null || isNaN(Number(nextAmt)) || Number(nextAmt) <= 0) return;
+      if (nextAmt === null) return;
+      const newAmt = parseMoneyInput(nextAmt);
+      if (isNaN(newAmt) || newAmt <= 0) {
+        showToast('⚠️ กรุณากรอกจำนวนเงินที่ถูกต้อง (มากกว่า 0)');
+        return;
+      }
       const nextNote = prompt('แก้ไขรายละเอียดเพิ่มเติม:', item.note || '');
       updateCurrentUser(user => {
         const target = user.expenses.find(x => x.id === id);
         if (!target) return;
         const oldAmt = Number(target.amount || 0);
-        const newAmt = Number(nextAmt);
         if (target.debtTagId) {
           const tag = (user.debtTags || []).find(t => t.id === target.debtTagId);
           if (tag && tag.balance !== null && tag.balance !== undefined) {
@@ -3343,17 +3359,23 @@
         showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
         return;
       }
+      const rawBal = document.getElementById('vault-balance').value.trim();
+      const vBal = rawBal === '' ? 0 : Math.max(0, Number(rawBal) || 0);
       updateCurrentUser(u => {
         u.vaults = u.vaults || [];
         u.vaults.push({
           id: 'v_' + Date.now(),
           type: document.getElementById('vault-type').value,
           name: vName,
-          balance: Number(document.getElementById('vault-balance').value),
+          balance: vBal,
           desc: vDesc,
           updatedAt: new Date().toISOString().slice(0, 10)
         });
-        addPointLog(u, 10, `เพิ่มคลังเงินเก็บ/ลงทุน (${vName})`);
+        if (vBal > 0) {
+          addPointLog(u, 10, `เพิ่มคลังเงินเก็บ/ลงทุน (${vName})`);
+        } else {
+          addPointLog(u, 0, `เปิดคลังเงินเก็บ/ลงทุนรอไว้ (${vName}) [ยอดเริ่มต้น 0]`);
+        }
       });
       document.getElementById('vault-name').value = '';
       document.getElementById('vault-balance').value = '';
@@ -3368,14 +3390,18 @@
       const v = (u.vaults || []).find(x => x.id === id);
       if (!v) return;
       const nextBal = prompt(`อัปเดตยอดเงิน "${v.name}" (บาท):`, v.balance);
-      if (nextBal === null || isNaN(Number(nextBal)) || Number(nextBal) < 0) return;
+      if (nextBal === null) return;
+      const newBal = parseMoneyInput(nextBal);
+      if (isNaN(newBal) || newBal < 0) {
+        showToast('⚠️ กรุณากรอกยอดเงินที่ถูกต้อง (0 ขึ้นไป)');
+        return;
+      }
       const nextDesc = prompt('ระบุหมายเหตุการอัปเดต (เช่น ได้ดอกเบี้ยเพิ่ม / เติมเงินออม):', v.desc || '');
       let deltaPts = 0;
       updateCurrentUser(user => {
         const target = user.vaults.find(x => x.id === id);
         if (!target) return;
         const oldBal = Number(target.balance || 0);
-        const newBal = Number(nextBal);
         target.balance = newBal;
         if (nextDesc !== null) target.desc = nextDesc.trim();
         target.updatedAt = new Date().toISOString().slice(0, 10);
@@ -3488,12 +3514,20 @@
       const nextBalStr = prompt('แก้ไขยอดหนี้คงเหลือ (เว้นว่างได้ถ้าไม่ระบุยอดหนี้):', curBalStr);
       if (nextBalStr === null) return;
       const trimmedBal = nextBalStr.trim();
-      if (trimmedBal !== '' && (isNaN(Number(trimmedBal)) || Number(trimmedBal) < 0)) return;
+      const parsedBal = trimmedBal === '' ? null : parseMoneyInput(trimmedBal);
+      if (trimmedBal !== '' && (isNaN(parsedBal) || parsedBal < 0)) {
+        showToast('⚠️ กรุณากรอกยอดหนี้คงเหลือที่ถูกต้อง');
+        return;
+      }
       const curPayStr = tag.defaultPay !== null && tag.defaultPay !== undefined ? String(tag.defaultPay) : '';
       const nextPayStr = prompt('แก้ไขยอดจ่ายต่อครั้ง / ขั้นต่ำสำหรับ Auto กรอก (เว้นว่างได้):', curPayStr);
       if (nextPayStr === null) return;
       const trimmedPay = nextPayStr.trim();
-      if (trimmedPay !== '' && (isNaN(Number(trimmedPay)) || Number(trimmedPay) < 0)) return;
+      const parsedPay = trimmedPay === '' ? null : parseMoneyInput(trimmedPay);
+      if (trimmedPay !== '' && (isNaN(parsedPay) || parsedPay < 0)) {
+        showToast('⚠️ กรุณากรอกยอดจ่ายต่อครั้งที่ถูกต้อง');
+        return;
+      }
       const curDmy = formatDateDMY(tag.updatedAt || new Date().toISOString().slice(0, 10));
       const nextDate = prompt('วันที่อัปเดต (dd/mm/yyyy):', curDmy);
       if (nextDate === null) return;
@@ -3505,8 +3539,8 @@
         const target = (user.debtTags || []).find(t => t.id === id);
         if (!target) return;
         target.name = nextName.trim();
-        target.balance = trimmedBal === '' ? null : Number(trimmedBal);
-        target.defaultPay = trimmedPay === '' ? null : Number(trimmedPay);
+        target.balance = parsedBal;
+        target.defaultPay = parsedPay;
         target.updatedAt = parsedDate;
         target.reason = nextReason.trim();
       });
@@ -3583,8 +3617,8 @@
       const curBal = Number(tag.balance || 0);
       const rawAdd = prompt(`ใช้จ่ายเพิ่ม / รูดเพิ่มสำหรับ "${tag.name}" (ยอดเดิม ${formatBaht(curBal)})\nกรอกจำนวนเงินที่ต้องการบวกเพิ่ม (บาท):`, '');
       if (rawAdd === null) return;
-      const addAmt = Number(rawAdd.trim());
-      if (!rawAdd.trim() || isNaN(addAmt) || addAmt <= 0) {
+      const addAmt = parseMoneyInput(rawAdd);
+      if (isNaN(addAmt) || addAmt <= 0) {
         showToast('⚠️ กรุณากรอกจำนวนเงินที่มากกว่า 0');
         return;
       }
