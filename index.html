@@ -844,6 +844,9 @@
       .rpg-panel { padding: 15px 12px; }
     }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div class="tent-drape-top" aria-hidden="true"></div>
@@ -870,8 +873,17 @@
           <span style="font-size: 1.25rem;">🛡️</span>
           <div>
             <strong>ข้อมูลของคุณเป็นความลับ 100%:</strong>
-            ข้อมูลบัญชี รายรับ-รายจ่าย และคลังเงินออมจะถูกเก็บไว้เฉพาะบนอุปกรณ์ของคุณเท่านั้น
-            ไม่มีการเผยแพร่สู่สาธารณะ และบุคคลอื่นไม่สามารถเข้ามาดูข้อมูลส่วนตัวของคุณได้
+            ข้อมูลบัญชี รายรับ-รายจ่าย และคลังเงินออมของคุณถูกจัดเก็บอย่างปลอดภัยบนระบบ Cloud (Firebase)
+            โดยกำหนดสิทธิ์ให้เข้าถึงได้เฉพาะบัญชีของคุณเท่านั้น บุคคลอื่นไม่สามารถเข้ามาดูข้อมูลส่วนตัวของคุณได้
+          </div>
+        </div>
+
+        <div class="privacy-banner" style="background: #eff6ff; border-color: #3b82f6; color: #1e3a8a; margin-top: 10px;">
+          <span style="font-size: 1.25rem;">🎭</span>
+          <div>
+            <strong>เล่นสนุกได้เต็มที่:</strong>
+            สามารถใช้ชื่อปลอม รูปโปรไฟล์อะไรก็ได้ รวมถึงอายุและอาชีพที่กรอก ไม่จำเป็นต้องเป็นตัวตนจริง
+            ระบบ <strong>Ranking</strong> จัดอันดับเพื่อความสนุกและสร้างวินัยเท่านั้น ส่วนการบริหารจัดการเงิน รายรับ-รายจ่าย และภาษี ขอให้เน้นใช้งานจริงจังเต็มรูปแบบ
           </div>
         </div>
       </header>
@@ -885,8 +897,8 @@
         <form id="login-form" onsubmit="handleLogin(event)">
           <div class="form-grid">
             <div class="form-group full">
-              <label for="login-username">ชื่อผู้ใช้ (Username)</label>
-              <input type="text" id="login-username" placeholder="กรอก Username ของคุณ" required />
+              <label for="login-username">ชื่อผู้ใช้หรืออีเมล (Username / Email)</label>
+              <input type="text" id="login-username" placeholder="กรอก Username หรือ Email ของคุณ" required />
             </div>
             <div class="form-group full">
               <label for="login-password">รหัสผ่าน (Password)</label>
@@ -895,6 +907,7 @@
           </div>
           <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
             <button type="submit" class="btn btn-primary" style="width: 100%;">เข้าสู่ระบบ Money Leveling</button>
+            <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="handleGoogleLogin()">🔵 เข้าสู่ระบบด้วย Google</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="switchAuthMode('signup')">
               ยังไม่มีบัญชี? กด Sign Up เพื่อสมัครใช้งาน
             </button>
@@ -908,8 +921,8 @@
               <input type="text" id="reg-username" placeholder="เช่น hero_ohm" required />
             </div>
             <div class="form-group">
-              <label for="reg-password">Password *</label>
-              <input type="password" id="reg-password" placeholder="ตั้งรหัสผ่าน" required minlength="4" />
+              <label for="reg-password">Password (อย่างน้อย 6 ตัว) *</label>
+              <input type="password" id="reg-password" placeholder="ตั้งรหัสผ่าน (อย่างน้อย 6 ตัว)" required minlength="6" />
             </div>
 
             <div class="form-group full">
@@ -918,8 +931,8 @@
             </div>
 
             <div class="form-group">
-              <label for="reg-dob">วันเดือนปีเกิด *</label>
-              <input type="date" id="reg-dob" required />
+              <label for="reg-age">อายุ (ใส่เลขเอาฮาได้ เช่น 9999, 0.1) *</label>
+              <input type="text" id="reg-age" placeholder="เช่น 25, 9999, 0.1" required />
             </div>
             <div class="form-group">
               <label for="reg-gender">เพศ</label>
@@ -932,16 +945,8 @@
             </div>
 
             <div class="form-group full">
-              <label for="reg-occupation">อาชีพ / สายงานจริง</label>
-              <select id="reg-occupation">
-                <option value="นักเรียน / นักศึกษา">🎒 นักเรียน / นักศึกษา</option>
-                <option value="พนักงานบริษัท">💼 พนักงานบริษัท</option>
-                <option value="ฟรีแลนซ์ / อาชีพอิสระ">🎨 ฟรีแลนซ์ / อาชีพอิสระ</option>
-                <option value="ค้าขาย / ธุรกิจส่วนตัว">🏪 ค้าขาย / ธุรกิจส่วนตัว</option>
-                <option value="ข้าราชการ / รัฐวิสาหกิจ">🏛️ ข้าราชการ / รัฐวิสาหกิจ</option>
-                <option value="สายไอที / โปรแกรมเมอร์">💻 สายไอที / โปรแกรมเมอร์</option>
-                <option value="อื่นๆ">🌟 อื่นๆ</option>
-              </select>
+              <label for="reg-occupation">อาชีพ / ฉายา (กรอกเองได้เลยอยากเป็นอะไรก็พิมพ์!) *</label>
+              <input type="text" id="reg-occupation" placeholder="เช่น อัศวินสายออม, แมวออฟฟิศ, ผู้กล้าเงินเดือนน้อย" required />
             </div>
 
             <div class="form-group full">
@@ -985,12 +990,6 @@
             <h2>Money Leveling</h2>
             <div style="font-size: 0.78rem; color: var(--text-muted);">เว็บไซต์วางแผนและบริหารจัดการเงินส่วนบุคคล</div>
           </div>
-        </div>
-
-        <div class="topbar-center-actions">
-          <button type="button" class="btn btn-danger btn-sm" onclick="handleClearAllLocalData()" title="ลบข้อมูลบัญชี รายรับ-รายจ่าย แจ้งเตือน คะแนน และ API Key ทั้งหมดในเบราว์เซอร์เครื่องนี้">
-            🗑️ ลบข้อมูลที่เก็บในเครื่องนี้
-          </button>
         </div>
 
         <div class="user-mini">
@@ -1037,7 +1036,7 @@
               </h3>
               <div style="font-size: 0.9rem; color: var(--text-muted);" id="report-profile-meta">-</div>
             </div>
-            <button type="button" class="btn btn-purple btn-sm" onclick="toggleEditProfile()">✏️ แก้ไขโปรไฟล์ / วันเกิด / รูป</button>
+            <button type="button" class="btn btn-purple btn-sm" onclick="toggleEditProfile()">✏️ แก้ไขโปรไฟล์ / อายุ / รูป</button>
           </div>
 
           <form id="edit-profile-form" class="hidden" onsubmit="handleUpdateProfile(event)" style="margin-top: 16px; padding: 16px; border-radius: var(--radius-md); background: var(--panel-soft); border: 2px solid #bfa07a;">
@@ -1048,8 +1047,8 @@
                 <input type="text" id="edit-community-name" required />
               </div>
               <div class="form-group">
-                <label for="edit-dob">วันเดือนปีเกิด</label>
-                <input type="date" id="edit-dob" required />
+                <label for="edit-age">อายุ (ใส่เลขเอาฮาได้)</label>
+                <input type="text" id="edit-age" placeholder="เช่น 25, 9999, 0.1" required />
               </div>
               <div class="form-group">
                 <label for="edit-gender">เพศ</label>
@@ -1061,16 +1060,8 @@
                 </select>
               </div>
               <div class="form-group">
-                <label for="edit-occupation">อาชีพ</label>
-                <select id="edit-occupation">
-                  <option value="นักเรียน / นักศึกษา">🎒 นักเรียน / นักศึกษา</option>
-                  <option value="พนักงานบริษัท">💼 พนักงานบริษัท</option>
-                  <option value="ฟรีแลนซ์ / อาชีพอิสระ">🎨 ฟรีแลนซ์ / อาชีพอิสระ</option>
-                  <option value="ค้าขาย / ธุรกิจส่วนตัว">🏪 ค้าขาย / ธุรกิจส่วนตัว</option>
-                  <option value="ข้าราชการ / รัฐวิสาหกิจ">🏛️ ข้าราชการ / รัฐวิสาหกิจ</option>
-                  <option value="สายไอที / โปรแกรมเมอร์">💻 สายไอที / โปรแกรมเมอร์</option>
-                  <option value="อื่นๆ">🌟 อื่นๆ</option>
-                </select>
+                <label for="edit-occupation">อาชีพ / ฉายา (กรอกเองได้เลย)</label>
+                <input type="text" id="edit-occupation" placeholder="เช่น อัศวินสายออม, แมวออฟฟิศ" required />
               </div>
               <div class="form-group full">
                 <label>เปลี่ยนรูปโปรไฟล์ (สำหรับ Ranking)</label>
@@ -1553,21 +1544,21 @@
       <!-- ==================== TAB 5: RANKING (ขวาสุด) ==================== -->
       <div id="tab-ranking" class="hidden">
         <div class="rpg-panel rpg-panel-gold" style="margin-bottom: 16px;">
-          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px;">
-            <div>
-              <div class="wood-pill-title" style="margin-bottom:4px;">🏆 ระบบจัดอันดับ (Ranking) — วัดจากวินัย Transaction</div>
-              <div style="font-size:0.86rem; color:var(--text-muted);">
-                คะแนนรายเดือนรีเซ็ตทุกวันที่ 1 • ระดับคลาส (Novice – God) อิงจากคะแนนสะสมประจำปีและรีเซ็ตทุกๆ ปีใหม่ • วัดจากวินัย Transaction (+/-)
+          <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:18px;">
+            <div style="flex:1; min-width:260px;">
+              <div class="wood-pill-title" style="margin-bottom:8px;">🏆 ระบบจัดอันดับ (Ranking) — วัดจากวินัย Transaction</div>
+              <div style="font-size:0.88rem; color:var(--text-muted); line-height:1.5;">
+                คะแนนรายเดือนรีเซ็ตทุกวันที่ 1 • ระดับคลาส (Novice – พระเจ้า) อิงจากคะแนนสะสมประจำปีและรีเซ็ตทุกๆ ปีใหม่ • วัดจากวินัย Transaction (+/-)
               </div>
             </div>
-            <div style="display:flex; gap:6px; background:var(--canvas-mid); padding:4px; border-radius:var(--radius-sm); border:1.5px solid #bfa07a;">
+            <div style="display:flex; gap:6px; background:var(--canvas-mid); padding:4px; border-radius:var(--radius-sm); border:1.5px solid #bfa07a; flex-shrink:0;">
               <button type="button" class="sub-tab-btn active" id="rank-mode-monthly" onclick="setRankingMode('monthly')" style="padding:6px 12px; font-size:0.85rem;">📅 ประจำเดือน</button>
               <button type="button" class="sub-tab-btn" id="rank-mode-all" onclick="setRankingMode('all')" style="padding:6px 12px; font-size:0.85rem;">🌟 รวมทั้งหมด</button>
             </div>
           </div>
 
-          <div id="ranking-my-summary" class="stat-grid" style="margin-bottom: 14px;"></div>
-          <div id="ranking-class-strip" class="ro-class-strip" style="margin-bottom: 14px;"></div>
+          <div id="ranking-my-summary" class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 16px;"></div>
+          <div id="ranking-class-strip" class="ro-class-strip" style="padding: 12px 14px; background: var(--panel-soft); border: 1.5px solid #d4b996; border-radius: var(--radius-md); gap: 8px; margin-bottom: 18px;"></div>
           <div id="ranking-leaderboard"></div>
         </div>
 
@@ -1650,11 +1641,11 @@
     }
 
     const SAMPLE_MEMBERS = [
-      { id: 'm1', communityName: 'ต้นกล้าออมเก่ง', occupation: 'นักเรียน / นักศึกษา', age: 17, avatar: makeSvgAvatar('#d97706', '🌱'), savingsRate: 45, monthlyScore: 185, allTimeScore: 1320 },
-      { id: 'm2', communityName: 'น้ำใสสายวางแผน', occupation: 'สายไอที / โปรแกรมเมอร์', age: 27, avatar: makeSvgAvatar('#0284c7', '💻'), savingsRate: 38, monthlyScore: 160, allTimeScore: 860 },
-      { id: 'm3', communityName: 'พีทฟรีแลนซ์', occupation: 'ฟรีแลนซ์ / อาชีพอิสระ', age: 25, avatar: makeSvgAvatar('#059669', '🎨'), savingsRate: 32, monthlyScore: 135, allTimeScore: 540 },
-      { id: 'm4', communityName: 'เจ๊เมย์ค้าขาย', occupation: 'ค้าขาย / ธุรกิจส่วนตัว', age: 33, avatar: makeSvgAvatar('#b45309', '🏪'), savingsRate: 26, monthlyScore: 110, allTimeScore: 310 },
-      { id: 'm5', communityName: 'บอสออฟฟิศ', occupation: 'พนักงานบริษัท', age: 29, avatar: makeSvgAvatar('#7c3aed', '💼'), savingsRate: 20, monthlyScore: 85, allTimeScore: 140 }
+      { id: 'm1', communityName: 'ต้นกล้าออมเก่ง', occupation: 'นักเรียน / นักศึกษา', age: 17, avatar: makeSvgAvatar('#d97706', '🌱'), savingsRate: 45, monthlyScore: 185, allTimeScore: 1720 },
+      { id: 'm2', communityName: 'น้ำใสสายวางแผน', occupation: 'สายไอที / โปรแกรมเมอร์', age: 27, avatar: makeSvgAvatar('#0284c7', '💻'), savingsRate: 38, monthlyScore: 160, allTimeScore: 1150 },
+      { id: 'm3', communityName: 'พีทฟรีแลนซ์', occupation: 'ฟรีแลนซ์ / อาชีพอิสระ', age: 25, avatar: makeSvgAvatar('#059669', '🎨'), savingsRate: 32, monthlyScore: 135, allTimeScore: 560 },
+      { id: 'm4', communityName: 'เจ๊เมย์ค้าขาย', occupation: 'ค้าขาย / ธุรกิจส่วนตัว', age: 33, avatar: makeSvgAvatar('#b45309', '🏪'), savingsRate: 26, monthlyScore: 110, allTimeScore: 220 },
+      { id: 'm5', communityName: 'บอสออฟฟิศ', occupation: 'พนักงานบริษัท', age: 29, avatar: makeSvgAvatar('#7c3aed', '💼'), savingsRate: 20, monthlyScore: 85, allTimeScore: 100 }
     ];
 
     const RO_CLASSES = [
@@ -1663,31 +1654,35 @@
         svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="18" r="10" fill="#fca5a5" stroke="#78350f" stroke-width="2"/><ellipse cx="13" cy="17" rx="1.4" ry="2" fill="#451a03"/><ellipse cx="19" cy="17" rx="1.4" ry="2" fill="#451a03"/><path d="M16 5C17.5 8 18 10 16 11C14 10 14.5 8 16 5Z" fill="#fde047" stroke="#78350f" stroke-width="1.3"/></svg>'
       },
       {
-        name: 'Swordman', minScore: 100, bg: '#fee2e2', border: '#dc2626', color: '#7f1d1d',
+        name: 'แม่บ้าน', minScore: 80, bg: '#fce7f3', border: '#db2777', color: '#831843',
+        svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M16 26C16 26 7 20.5 7 13.5C7 10 9.8 7.5 12.8 7.5C14.5 7.5 15.5 8.4 16 9.5C16.5 8.4 17.5 7.5 19.2 7.5C22.2 7.5 25 10 25 13.5C25 20.5 16 26 16 26Z" fill="#f472b6" stroke="#9d174d" stroke-width="2"/><path d="M16 5L17 7.5L19.5 8.5L17 9.5L16 12L15 9.5L12.5 8.5L15 7.5L16 5Z" fill="#fde047"/></svg>'
+      },
+      {
+        name: 'นักสู้', minScore: 180, bg: '#fee2e2', border: '#dc2626', color: '#7f1d1d',
         svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M23 5L27 9L14 22L10 18L23 5Z" fill="#e2e8f0" stroke="#475569" stroke-width="1.8"/><path d="M8 16L16 24M7 25L11 21" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round"/></svg>'
       },
       {
-        name: 'Knight', minScore: 250, bg: '#dbeafe', border: '#2563eb', color: '#1e3a8a',
+        name: 'อัศวิน', minScore: 320, bg: '#dbeafe', border: '#2563eb', color: '#1e3a8a',
         svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M16 4L25 8V15C25 21.5 21 26.5 16 28C11 26.5 7 21.5 7 15V8L16 4Z" fill="#93c5fd" stroke="#1e40af" stroke-width="2"/><path d="M16 9V23M11 14H21" stroke="#eff6ff" stroke-width="2.4" stroke-linecap="round"/></svg>'
       },
       {
-        name: 'Lord Knight', minScore: 500, bg: '#ffe4e6', border: '#be123c', color: '#881337',
-        svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M6 12L11 16L16 6L21 16L26 12L24 24H8L6 12Z" fill="#fda4af" stroke="#9f1239" stroke-width="2"/><circle cx="16" cy="18" r="3" fill="#fde047" stroke="#9f1239" stroke-width="1.5"/></svg>'
+        name: 'จอมเวทย์', minScore: 500, bg: '#ede9fe', border: '#7c3aed', color: '#4c1d95',
+        svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M16 4L19 12L27 13L21 18.5L22.5 26.5L16 22.5L9.5 26.5L11 18.5L5 13L13 12L16 4Z" fill="#c4b5fd" stroke="#5b21b6" stroke-width="1.8"/><circle cx="16" cy="16" r="3" fill="#fde047"/></svg>'
       },
       {
-        name: 'Rune Knight', minScore: 800, bg: '#cffafe', border: '#0891b2', color: '#164e63',
+        name: 'มหาจอมเวทย์', minScore: 750, bg: '#cffafe', border: '#0891b2', color: '#164e63',
         svg: '<svg viewBox="0 0 32 32" fill="none"><polygon points="16,3 26,16 16,29 6,16" fill="#67e8f9" stroke="#0e7490" stroke-width="2"/><path d="M16 8V24M11 13L16 16L21 13" stroke="#ecfeff" stroke-width="2.2" stroke-linecap="round"/></svg>'
       },
       {
-        name: 'Dragon Knight', minScore: 1200, bg: '#d1fae5', border: '#059669', color: '#064e3b',
-        svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M4 15C7 9 12 8 16 13C20 8 25 9 28 15C24 17 21 22 16 27C11 22 8 17 4 15Z" fill="#34d399" stroke="#065f46" stroke-width="2"/><circle cx="16" cy="17" r="3.2" fill="#fbbf24" stroke="#065f46" stroke-width="1.4"/></svg>'
+        name: 'เซียน', minScore: 1100, bg: '#d1fae5', border: '#059669', color: '#064e3b',
+        svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="10.5" fill="#6ee7b7" stroke="#065f46" stroke-width="2"/><path d="M16 5.5A5.25 5.25 0 0 1 16 16A5.25 5.25 0 0 0 16 26.5" fill="#065f46"/><circle cx="16" cy="10.7" r="1.7" fill="#ecfdf5"/><circle cx="16" cy="21.3" r="1.7" fill="#065f46"/></svg>'
       },
       {
-        name: 'Valkyrie', minScore: 1800, bg: '#f3e8ff', border: '#9333ea', color: '#581c87',
+        name: 'มหาเทพ', minScore: 1600, bg: '#f3e8ff', border: '#9333ea', color: '#581c87',
         svg: '<svg viewBox="0 0 32 32" fill="none"><path d="M4 10C9 10 13 13 16 18C19 13 23 10 28 10C26 17 22 22 16 25C10 22 6 17 4 10Z" fill="#e9d5ff" stroke="#7e22ce" stroke-width="1.8"/><path d="M16 5L18.5 11H13.5L16 5Z" fill="#fde047" stroke="#7e22ce" stroke-width="1.4"/></svg>'
       },
       {
-        name: 'God', minScore: 2500, bg: 'linear-gradient(135deg,#fef08a,#fde047)', border: '#b45309', color: '#713f12',
+        name: 'พระเจ้า', minScore: 2200, bg: 'linear-gradient(135deg,#fef08a,#fde047)', border: '#b45309', color: '#713f12',
         svg: '<svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" fill="#fef08a" stroke="#b45309" stroke-width="2"/><path d="M16 6L18.6 12.6L25.5 13L20.2 17.5L22 24.4L16 20.6L10 24.4L11.8 17.5L6.5 13L13.4 12.6L16 6Z" fill="#f59e0b" stroke="#92400e" stroke-width="1.3"/></svg>'
       }
     ];
@@ -1728,9 +1723,57 @@
       return Math.max(0, age);
     }
 
+    function getUserAgeDisplay(user) {
+      if (!user) return '0';
+      if (user.age !== undefined && user.age !== null && String(user.age).trim() !== '') {
+        return String(user.age).trim();
+      }
+      return String(calcAgeFromDob(user.dob));
+    }
+
     function calcThaiSSO(grossSalary) {
       if (grossSalary <= 0) return 0;
       return Math.round(Math.min(grossSalary, TH_SSO_CAP) * TH_SSO_RATE);
+    }
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPNFM2RD-cvKBqN4odnhoviXTje2GBkHA",
+      authDomain: "money-leveling.firebaseapp.com",
+      projectId: "money-leveling",
+      storageBucket: "money-leveling.firebasestorage.app",
+      messagingSenderId: "1097675567603",
+      appId: "1:1097675567603:web:5621a361e8c453137b6286",
+      measurementId: "G-MTXQW2QBXQ"
+    };
+
+    let fbAuth = null;
+    let fbDb = null;
+    try {
+      if (window.firebase && !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+      }
+      if (window.firebase) {
+        fbAuth = firebase.auth();
+        fbDb = firebase.firestore();
+      }
+    } catch (err) {
+      console.warn('Firebase init fallback to local:', err);
+    }
+
+    let cloudUid = null;
+    let cloudUserData = null;
+    let cloudLeaderboardCache = [];
+    let __cloudSyncTimer = null;
+
+    function toAuthEmail(usernameOrEmail) {
+      const val = String(usernameOrEmail || '').trim();
+      if (val.includes('@')) return val;
+      const safe = val.toLowerCase().replace(/[^a-z0-9._-]/g, '');
+      if (safe.length >= 2) return `${safe}@moneyleveling.app`;
+      // Fallback hex encoding for Thai/non-ASCII usernames
+      const hex = Array.from(new TextEncoder().encode(val.toLowerCase()))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      return `u_${hex}@moneyleveling.app`;
     }
 
     function loadUsers() {
@@ -1741,11 +1784,96 @@
     function saveUsers(users) { localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users)); }
     function getCurrentUsername() { return localStorage.getItem(STORAGE_SESSION_KEY); }
     function getCurrentUser() {
+      if (cloudUid && cloudUserData) return cloudUserData;
       const uname = getCurrentUsername();
       return uname ? loadUsers().find(u => u.username === uname) || null : null;
     }
 
+    function compactUserForCloud(u) {
+      const copy = { ...u };
+      delete copy.password; // Never store plaintext password in Firestore
+      if (Array.isArray(copy.pointLogs) && copy.pointLogs.length > 60) {
+        copy.pointLogs = copy.pointLogs.slice(0, 60);
+      }
+      return copy;
+    }
+
+    async function syncUserToCloudImmediate() {
+      if (!fbDb || !cloudUid || !cloudUserData) return;
+      try {
+        const cleanDoc = compactUserForCloud(cloudUserData);
+        await fbDb.collection('users').doc(cloudUid).set(cleanDoc);
+        const lbRef = fbDb.collection('leaderboard').doc(cloudUid);
+        if (cloudUserData.optOutRanking) {
+          await lbRef.delete().catch(() => {});
+        } else {
+          const r = computeUserRankingScores(cloudUserData);
+          const s = computeFinancialSummary(cloudUserData);
+          await lbRef.set({
+            communityName: cloudUserData.communityName || cloudUserData.username || 'ผู้กล้า',
+            occupation: cloudUserData.occupation || 'นักผจญภัย',
+            age: getUserAgeDisplay(cloudUserData),
+            avatar: cloudUserData.avatar || '',
+            savingsRate: s.mSaveRate,
+            monthlyScore: r.monthlyScore,
+            yearlyScore: r.yearlyScore,
+            allTimeScore: r.allTimeScore,
+            curMonth: r.curMonth,
+            curYear: r.curYear,
+            updatedAt: Date.now()
+          });
+        }
+      } catch (err) {
+        console.warn('Cloud sync warning:', err);
+      }
+    }
+
+    function scheduleCloudSync() {
+      if (!fbDb || !cloudUid || !cloudUserData) return;
+      clearTimeout(__cloudSyncTimer);
+      __cloudSyncTimer = setTimeout(() => { syncUserToCloudImmediate(); }, 350);
+    }
+
+    async function fetchCloudLeaderboard() {
+      if (!fbDb || !cloudUid) return [];
+      try {
+        const snap = await fbDb.collection('leaderboard').get();
+        const curMonth = getCurrentMonthKey();
+        const curYear = curMonth.slice(0, 4);
+        const rows = [];
+        snap.forEach(doc => {
+          const d = doc.data() || {};
+          rows.push({
+            id: doc.id,
+            isMe: doc.id === cloudUid,
+            optOut: false,
+            communityName: d.communityName || 'สมาชิก',
+            occupation: d.occupation || 'นักผจญภัย',
+            age: d.age ?? '-',
+            avatar: d.avatar || '',
+            savingsRate: Number(d.savingsRate || 0),
+            yearlyScore: d.curYear === curYear ? Number(d.yearlyScore || 0) : 0,
+            monthlyScore: d.curMonth === curMonth ? Number(d.monthlyScore || 0) : 0,
+            allTimeScore: Number(d.allTimeScore || 0)
+          });
+        });
+        cloudLeaderboardCache = rows;
+        return rows;
+      } catch (err) {
+        console.warn('Leaderboard fetch warning:', err);
+        return cloudLeaderboardCache;
+      }
+    }
+
     function updateCurrentUser(mutator) {
+      if (cloudUid && cloudUserData) {
+        mutator(cloudUserData);
+        if (Array.isArray(cloudUserData.pointLogs) && cloudUserData.pointLogs.length > 60) {
+          cloudUserData.pointLogs = cloudUserData.pointLogs.slice(0, 60);
+        }
+        scheduleCloudSync();
+        return cloudUserData;
+      }
       const users = loadUsers();
       const idx = users.findIndex(u => u.username === getCurrentUsername());
       if (idx === -1) return null;
@@ -1762,16 +1890,25 @@
       window.__toastTimer = setTimeout(() => el.classList.add('hidden'), 3200);
     }
 
-    function handleClearAllLocalData() {
+    async function handleClearAllLocalData() {
       const ok = confirm(
-        '⚠️ ยืนยันการลบข้อมูลทั้งหมดที่เก็บในเบราว์เซอร์เครื่องนี้?\n\n' +
-        '• บัญชีผู้ใช้ทั้งหมดในเครื่องนี้\n' +
-        '• รายการรายรับ / รายจ่าย / คลังเงินเก็บ / ลดหย่อนภาษี\n' +
-        '• รายการแจ้งเตือนชำระหนี้ และประวัติคะแนน Ranking\n' +
-        '• Gemini API Key ที่บันทึกไว้\n\n' +
+        '⚠️ ยืนยันการลบข้อมูลทั้งหมด?\n\n' +
+        '• ข้อมูลในเบราว์เซอร์เครื่องนี้ (รวมถึง Gemini API Key)\n' +
+        (cloudUid ? '• ข้อมูลบัญชีและการเงินของคุณบน Cloud (Firebase) จะถูกลบด้วย\n\n' : '\n') +
         'การลบนี้ไม่สามารถกู้คืนได้ ต้องการดำเนินการต่อหรือไม่?'
       );
       if (!ok) return;
+      if (fbDb && cloudUid) {
+        try {
+          await fbDb.collection('users').doc(cloudUid).delete();
+          await fbDb.collection('leaderboard').doc(cloudUid).delete().catch(() => {});
+        } catch (e) { console.warn(e); }
+      }
+      if (fbAuth && fbAuth.currentUser) {
+        await fbAuth.signOut().catch(() => {});
+      }
+      cloudUid = null;
+      cloudUserData = null;
       localStorage.removeItem(STORAGE_USERS_KEY);
       localStorage.removeItem(STORAGE_SESSION_KEY);
       localStorage.removeItem(STORAGE_AI_KEY);
@@ -1781,7 +1918,7 @@
       document.getElementById('auth-view').classList.remove('hidden');
       const keyInput = document.getElementById('ai-api-key');
       if (keyInput) keyInput.value = '';
-      showToast('🗑️ ลบข้อมูลทั้งหมดในเครื่องนี้เรียบร้อยแล้ว');
+      showToast('🗑️ ลบข้อมูลทั้งหมดเรียบร้อยแล้ว');
     }
 
     function getCurrentMonthKey() {
@@ -2039,14 +2176,41 @@
       return false;
     }
 
-    function handleSignup(e) {
+    async function loadOrCreateCloudProfile(fbUser, fallbackProfile) {
+      cloudUid = fbUser.uid;
+      const docRef = fbDb.collection('users').doc(cloudUid);
+      const snap = await docRef.get();
+      if (snap.exists) {
+        cloudUserData = snap.data();
+      } else {
+        cloudUserData = fallbackProfile || {
+          username: fbUser.email || fbUser.uid,
+          communityName: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'ผู้กล้าคนใหม่'),
+          age: '25',
+          gender: 'ไม่ระบุ',
+          occupation: 'นักผจญภัย',
+          avatar: fbUser.photoURL || '',
+          optOutRanking: false,
+          incomes: [],
+          expenses: [],
+          vaults: [],
+          reminders: [],
+          pointLogs: [],
+          taxProfile: { lifeIns: 0, funds: 0, homeLoan: 0, family: 0 }
+        };
+        await syncUserToCloudImmediate();
+      }
+      return cloudUserData;
+    }
+
+    async function handleSignup(e) {
       e.preventDefault();
       const username = document.getElementById('reg-username').value.trim();
       const password = document.getElementById('reg-password').value;
       const communityName = document.getElementById('reg-community-name').value.trim();
-      const dob = document.getElementById('reg-dob').value;
+      const age = document.getElementById('reg-age').value.trim() || '1';
       const gender = document.getElementById('reg-gender').value;
-      const occupation = document.getElementById('reg-occupation').value;
+      const occupation = document.getElementById('reg-occupation').value.trim() || 'นักผจญภัย';
       const optOutRanking = document.getElementById('reg-opt-out').checked;
 
       if (containsDirectProfanity(username) || containsDirectProfanity(communityName)) {
@@ -2054,21 +2218,52 @@
         return;
       }
 
-      const users = loadUsers();
-      if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-        showToast('⚠️ Username นี้มีผู้ใช้งานแล้ว');
+      if (password.length < 6) {
+        showToast('⚠️ รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
         return;
       }
 
-      users.push({
-        username, password, communityName, dob, gender, occupation,
+      const newProfile = {
+        username, communityName, age, gender, occupation,
         avatar: regAvatarData || '',
         optOutRanking,
         incomes: [],
         expenses: [],
         vaults: [],
+        reminders: [],
+        pointLogs: [],
         taxProfile: { lifeIns: 0, funds: 0, homeLoan: 0, family: 0 }
-      });
+      };
+
+      if (fbAuth && fbDb) {
+        try {
+          showToast('⏳ กำลังสร้างบัญชีบน Cloud...');
+          const email = toAuthEmail(username);
+          const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
+          await loadOrCreateCloudProfile(cred.user, newProfile);
+          regAvatarData = '';
+          document.getElementById('signup-form').reset();
+          document.getElementById('reg-avatar-preview').innerHTML = '👤';
+          showToast('🎉 สมัครสมาชิกและเชื่อมต่อ Cloud สำเร็จ!');
+          enterDashboard();
+          return;
+        } catch (err) {
+          if (err.code === 'auth/email-already-in-use') {
+            showToast('⚠️ Username / อีเมลนี้มีผู้ใช้งานแล้ว');
+          } else {
+            showToast(`❌ สมัครไม่สำเร็จ: ${err.message}`);
+          }
+          return;
+        }
+      }
+
+      // Fallback local mode
+      const users = loadUsers();
+      if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+        showToast('⚠️ Username นี้มีผู้ใช้งานแล้ว');
+        return;
+      }
+      users.push({ ...newProfile, password });
       saveUsers(users);
       localStorage.setItem(STORAGE_SESSION_KEY, username);
       regAvatarData = '';
@@ -2078,10 +2273,27 @@
       enterDashboard();
     }
 
-    function handleLogin(e) {
+    async function handleLogin(e) {
       e.preventDefault();
       const username = document.getElementById('login-username').value.trim();
       const password = document.getElementById('login-password').value;
+
+      if (fbAuth && fbDb) {
+        try {
+          showToast('⏳ กำลังเข้าสู่ระบบ...');
+          const email = toAuthEmail(username);
+          const cred = await fbAuth.signInWithEmailAndPassword(email, password);
+          await loadOrCreateCloudProfile(cred.user);
+          document.getElementById('login-form').reset();
+          showToast(`👋 ยินดีต้อนรับ, ${cloudUserData.communityName}`);
+          enterDashboard();
+          return;
+        } catch (err) {
+          showToast('❌ Username/Email หรือ Password ไม่ถูกต้อง');
+          return;
+        }
+      }
+
       const user = loadUsers().find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
       if (!user) { showToast('❌ Username หรือ Password ไม่ถูกต้อง'); return; }
       localStorage.setItem(STORAGE_SESSION_KEY, user.username);
@@ -2090,7 +2302,28 @@
       enterDashboard();
     }
 
-    function handleLogout() {
+    async function handleGoogleLogin() {
+      if (!fbAuth || !fbDb) {
+        showToast('⚠️ ยังไม่สามารถเชื่อมต่อ Firebase ได้');
+        return;
+      }
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const cred = await fbAuth.signInWithPopup(provider);
+        await loadOrCreateCloudProfile(cred.user);
+        showToast(`👋 ยินดีต้อนรับ, ${cloudUserData.communityName}`);
+        enterDashboard();
+      } catch (err) {
+        showToast(`❌ Google Login ไม่สำเร็จ: ${err.message}`);
+      }
+    }
+
+    async function handleLogout() {
+      if (fbAuth && fbAuth.currentUser) {
+        await fbAuth.signOut().catch(() => {});
+      }
+      cloudUid = null;
+      cloudUserData = null;
       localStorage.removeItem(STORAGE_SESSION_KEY);
       document.getElementById('dashboard-view').classList.add('hidden');
       document.getElementById('floating-reminder-box').classList.add('hidden');
@@ -2138,7 +2371,7 @@
       const rScores = computeUserRankingScores(user);
       document.getElementById('topbar-name').textContent = user.communityName;
       document.getElementById('topbar-class-badge').innerHTML = renderRoClassBadge(rScores.yearlyScore);
-      document.getElementById('topbar-sub').textContent = `${user.occupation} • อายุ ${calcAgeFromDob(user.dob)} ปี`;
+      document.getElementById('topbar-sub').textContent = `${user.occupation} • อายุ ${getUserAgeDisplay(user)} ปี`;
       document.getElementById('topbar-avatar').innerHTML = user.avatar ? `<img src="${user.avatar}" alt="Avatar" />` : '👤';
     }
 
@@ -2148,7 +2381,7 @@
       if (!user) return;
       const sum = computeFinancialSummary(user);
       const rScores = computeUserRankingScores(user);
-      const age = calcAgeFromDob(user.dob);
+      const age = getUserAgeDisplay(user);
 
       document.getElementById('report-avatar').innerHTML = user.avatar ? `<img src="${user.avatar}" alt="Avatar" />` : '👤';
       document.getElementById('report-community-name').textContent = user.communityName;
@@ -2264,9 +2497,9 @@
       if (form.classList.contains('hidden')) {
         const u = getCurrentUser();
         document.getElementById('edit-community-name').value = u.communityName;
-        document.getElementById('edit-dob').value = u.dob || '';
+        document.getElementById('edit-age').value = getUserAgeDisplay(u);
         document.getElementById('edit-gender').value = u.gender;
-        document.getElementById('edit-occupation').value = u.occupation;
+        document.getElementById('edit-occupation').value = u.occupation || '';
         document.getElementById('edit-opt-out').checked = Boolean(u.optOutRanking);
         editAvatarData = u.avatar || '';
         document.getElementById('edit-avatar-preview').innerHTML = editAvatarData ? `<img src="${editAvatarData}" alt="Avatar" />` : '👤';
@@ -2283,9 +2516,9 @@
       }
       updateCurrentUser(u => {
         u.communityName = nextCommunityName;
-        u.dob = document.getElementById('edit-dob').value;
+        u.age = document.getElementById('edit-age').value.trim() || '1';
         u.gender = document.getElementById('edit-gender').value;
-        u.occupation = document.getElementById('edit-occupation').value;
+        u.occupation = document.getElementById('edit-occupation').value.trim() || 'นักผจญภัย';
         u.avatar = editAvatarData;
         u.optOutRanking = document.getElementById('edit-opt-out').checked;
       });
@@ -3042,17 +3275,17 @@
       const modeTitle = rankingMode === 'monthly' ? `ประจำเดือน (${myRank.curMonth})` : 'สะสมรวมทั้งหมด';
 
       document.getElementById('ranking-my-summary').innerHTML = `
-        <div class="stat-box">
+        <div class="stat-card">
           <div class="stat-label">ระดับคลาสปี ${myRank.curYear} (รีเซ็ตทุกปี)</div>
           <div style="margin:6px 0;">${renderRoClassBadge(myRank.yearlyScore)}</div>
           <div class="stat-sub">คะแนนสะสมปี ${myRank.curYear}: ${myRank.yearlyScore} แต้ม</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-card">
           <div class="stat-label">📅 คะแนนประจำเดือน (${myRank.curMonth})</div>
           <div class="stat-value text-income">${myRank.monthlyScore} แต้ม</div>
           <div class="stat-sub">แอคชั่น ${myRank.monthlyActionPts >= 0 ? '+' : ''}${myRank.monthlyActionPts} • วินัย ${myRank.monthlyDisciplinePts >= 0 ? '+' : ''}${myRank.monthlyDisciplinePts}</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-card">
           <div class="stat-label">🌟 คะแนนสะสมรวมทั้งหมด</div>
           <div class="stat-value" style="color:var(--wood-dark);">${myRank.allTimeScore} แต้ม</div>
           <div class="stat-sub">รายเดือนรีเซ็ตวันที่ 1 • ระดับคลาสรีเซ็ตทุกปีใหม่</div>
@@ -3065,69 +3298,103 @@
         return `<span class="ro-class-badge" style="background:${cls.bg}; border-color:${cls.border}; color:${cls.color}; opacity:${active ? '1' : '0.68'}; ${active ? 'box-shadow:0 0 0 2px #f59e0b;' : ''}">${cls.svg}<span>${cls.name} (${cls.minScore}+)</span></span>`;
       }).join('');
 
-      // Build leaderboard from local users (respecting optOutRanking) + sample members
-      const localUsers = loadUsers()
-        .filter(u => !u.optOutRanking || u.username === me.username)
-        .map(u => {
-          const r = computeUserRankingScores(u);
-          const s = computeFinancialSummary(u);
-          return {
-            id: u.username,
-            isMe: u.username === me.username,
-            optOut: Boolean(u.optOutRanking),
-            communityName: u.communityName || u.username,
-            occupation: u.occupation || 'สมาชิก',
-            age: calcAgeFromDob(u.dob),
-            avatar: u.avatar || '',
-            savingsRate: s.mSaveRate,
-            yearlyScore: r.yearlyScore,
-            score: rankingMode === 'monthly' ? r.monthlyScore : r.allTimeScore
-          };
-        });
+      // Build leaderboard from Cloud (when logged in) or local users + sample members
+      function renderLeaderboardRows(cloudRows) {
+        let userRows = [];
+        if (cloudUid && Array.isArray(cloudRows)) {
+          userRows = cloudRows.map(c => ({
+            ...c,
+            score: rankingMode === 'monthly' ? c.monthlyScore : c.allTimeScore
+          }));
+          if (!userRows.some(r => r.isMe)) {
+            const s = computeFinancialSummary(me);
+            userRows.push({
+              id: cloudUid,
+              isMe: true,
+              optOut: Boolean(me.optOutRanking),
+              communityName: me.communityName || me.username || 'คุณ',
+              occupation: me.occupation || 'นักผจญภัย',
+              age: getUserAgeDisplay(me),
+              avatar: me.avatar || '',
+              savingsRate: s.mSaveRate,
+              yearlyScore: myRank.yearlyScore,
+              score: rankingMode === 'monthly' ? myRank.monthlyScore : myRank.allTimeScore
+            });
+          }
+        } else {
+          userRows = loadUsers()
+            .filter(u => !u.optOutRanking || u.username === me.username)
+            .map(u => {
+              const r = computeUserRankingScores(u);
+              const s = computeFinancialSummary(u);
+              return {
+                id: u.username,
+                isMe: u.username === me.username,
+                optOut: Boolean(u.optOutRanking),
+                communityName: u.communityName || u.username,
+                occupation: u.occupation || 'สมาชิก',
+                age: getUserAgeDisplay(u),
+                avatar: u.avatar || '',
+                savingsRate: s.mSaveRate,
+                yearlyScore: r.yearlyScore,
+                score: rankingMode === 'monthly' ? r.monthlyScore : r.allTimeScore
+              };
+            });
+        }
 
-      const samples = SAMPLE_MEMBERS.map(m => ({
-        id: m.id,
-        isMe: false,
-        optOut: false,
-        communityName: m.communityName,
-        occupation: m.occupation,
-        age: m.age,
-        avatar: m.avatar,
-        savingsRate: m.savingsRate,
-        yearlyScore: m.allTimeScore,
-        score: rankingMode === 'monthly' ? m.monthlyScore : m.allTimeScore
-      }));
+        const samples = SAMPLE_MEMBERS.map(m => ({
+          id: m.id,
+          isMe: false,
+          optOut: false,
+          communityName: m.communityName,
+          occupation: m.occupation,
+          age: m.age,
+          avatar: m.avatar,
+          savingsRate: m.savingsRate,
+          yearlyScore: m.allTimeScore,
+          score: rankingMode === 'monthly' ? m.monthlyScore : m.allTimeScore
+        }));
 
-      const board = [...localUsers, ...samples].sort((a, b) => b.score - a.score);
-      const medals = ['🥇', '🥈', '🥉'];
+        const board = [...userRows, ...samples].sort((a, b) => b.score - a.score);
+        const medals = ['🥇', '🥈', '🥉'];
 
-      document.getElementById('ranking-leaderboard').innerHTML = board.map((entry, idx) => {
-        const badge = medals[idx] || `#${idx + 1}`;
-        const avatarHtml = entry.avatar
-          ? `<img src="${entry.avatar}" alt="" style="width:100%; height:100%; object-fit:cover;" />`
-          : '👤';
-        const meBadge = entry.isMe ? '<span style="background:#f59e0b; color:#fff; font-size:0.72rem; padding:2px 7px; border-radius:999px; margin-left:6px;">คุณ</span>' : '';
-        const hideNote = entry.isMe && entry.optOut ? ' <small style="color:var(--text-muted);">(ซ่อนจากผู้อื่น)</small>' : '';
-        return `
-          <div class="rank-row ${entry.isMe ? 'is-me' : ''}">
-            <div style="display:flex; align-items:center; gap:12px; min-width:0; flex:1;">
-              <div style="font-size:1.35rem; width:34px; text-align:center; font-weight:700;">${badge}</div>
-              <div class="user-mini-avatar" style="flex-shrink:0;">${avatarHtml}</div>
-              <div style="min-width:0;">
-                <div style="font-weight:700; font-size:0.96rem;">${escapeHtml(entry.communityName)}${meBadge}${hideNote}</div>
-                <div style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(entry.occupation)} • อายุ ${entry.age} ปี • อัตราออม ${entry.savingsRate}%</div>
+        document.getElementById('ranking-leaderboard').innerHTML = board.map((entry, idx) => {
+          const badge = medals[idx] || `#${idx + 1}`;
+          const avatarHtml = entry.avatar
+            ? `<img src="${entry.avatar}" alt="" style="width:100%; height:100%; object-fit:cover;" />`
+            : '👤';
+          const meBadge = entry.isMe ? '<span style="background:#f59e0b; color:#fff; font-size:0.72rem; padding:2px 7px; border-radius:999px; margin-left:6px;">คุณ</span>' : '';
+          const hideNote = entry.isMe && entry.optOut ? ' <small style="color:var(--text-muted);">(ซ่อนจากผู้อื่น)</small>' : '';
+          return `
+            <div class="rank-row ${entry.isMe ? 'is-me' : ''}">
+              <div style="display:flex; align-items:center; gap:12px; min-width:0; flex:1;">
+                <div style="font-size:1.35rem; width:34px; text-align:center; font-weight:700;">${badge}</div>
+                <div class="user-mini-avatar" style="flex-shrink:0;">${avatarHtml}</div>
+                <div style="min-width:0;">
+                  <div style="font-weight:700; font-size:0.96rem;">${escapeHtml(entry.communityName)}${meBadge}${hideNote}</div>
+                  <div style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(entry.occupation)} • อายุ ${entry.age} ปี • อัตราออม ${entry.savingsRate}%</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                ${renderRoClassBadge(entry.yearlyScore)}
+              </div>
+              <div style="text-align:right; flex-shrink:0; min-width:84px;">
+                <div style="font-weight:700; font-size:1.05rem; color:var(--wood-dark);">${entry.score} แต้ม</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">${rankingMode === 'monthly' ? 'เดือนนี้' : 'รวมทั้งหมด'}</div>
               </div>
             </div>
-            <div style="display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              ${renderRoClassBadge(entry.yearlyScore)}
-            </div>
-            <div style="text-align:right; flex-shrink:0; min-width:84px;">
-              <div style="font-weight:700; font-size:1.05rem; color:var(--wood-dark);">${entry.score} แต้ม</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">${rankingMode === 'monthly' ? 'เดือนนี้' : 'รวมทั้งหมด'}</div>
-            </div>
-          </div>
-        `;
-      }).join('');
+          `;
+        }).join('');
+      }
+
+      if (cloudUid && fbDb) {
+        renderLeaderboardRows(cloudLeaderboardCache);
+        syncUserToCloudImmediate().then(() => fetchCloudLeaderboard()).then(rows => {
+          renderLeaderboardRows(rows);
+        });
+      } else {
+        renderLeaderboardRows(null);
+      }
 
       const logsToShow = rankingMode === 'monthly'
         ? myRank.logs.filter(l => l.month === myRank.curMonth)
@@ -3152,7 +3419,23 @@
     }
 
     (function init() {
-      if (getCurrentUser()) enterDashboard();
+      if (fbAuth && fbDb) {
+        fbAuth.onAuthStateChanged(async (user) => {
+          if (user) {
+            try {
+              await loadOrCreateCloudProfile(user);
+              enterDashboard();
+            } catch (err) {
+              console.warn('Auth state load error:', err);
+            }
+          } else {
+            cloudUid = null;
+            cloudUserData = null;
+          }
+        });
+      } else if (getCurrentUser()) {
+        enterDashboard();
+      }
     })();
   </script>
 </body>
