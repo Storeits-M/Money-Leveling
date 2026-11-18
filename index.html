@@ -978,12 +978,26 @@
                 <option value="ไม่ระบุ">ไม่ระบุ</option>
                 <option value="ชาย">ชาย</option>
                 <option value="หญิง">หญิง</option>
-                <option value="LGBTQ+">LGBTQ+</option>
+                <option value="เกย์ (Gay)">เกย์ (Gay)</option>
+                <option value="เลสเบี้ยน (Lesbian)">เลสเบี้ยน (Lesbian)</option>
+                <option value="ไบเซ็กชวล (Bisexual)">ไบเซ็กชวล (Bisexual)</option>
+                <option value="ทรานส์เจนเดอร์หญิง / สาวประเภทสอง (Trans Woman)">ทรานส์เจนเดอร์หญิง / สาวประเภทสอง (Trans Woman)</option>
+                <option value="ทรานส์เจนเดอร์ชาย (Trans Man)">ทรานส์เจนเดอร์ชาย (Trans Man)</option>
+                <option value="ทอม">ทอม</option>
+                <option value="ดี้">ดี้</option>
+                <option value="เฟมบอย (Femboy)">เฟมบอย (Femboy)</option>
+                <option value="นอนไบนารี (Non-binary)">นอนไบนารี (Non-binary)</option>
+                <option value="เจนเดอร์ฟลูอิด (Genderfluid)">เจนเดอร์ฟลูอิด (Genderfluid)</option>
+                <option value="แพนเซ็กชวล (Pansexual)">แพนเซ็กชวล (Pansexual)</option>
+                <option value="เอเซ็กชวล (Asexual)">เอเซ็กชวล (Asexual)</option>
+                <option value="เควียร์ (Queer)">เควียร์ (Queer)</option>
+                <option value="อินเตอร์เซ็กส์ (Intersex)">อินเตอร์เซ็กส์ (Intersex)</option>
+                <option value="LGBTQ+">LGBTQ+ / อื่นๆ</option>
               </select>
             </div>
 
             <div class="form-group full">
-              <label for="reg-occupation">อาชีพ / ฉายา (กรอกเองได้เลยอยากเป็นอะไรก็พิมพ์!) *</label>
+              <label for="reg-occupation">อาชีพหรือสโลแกนหรืออยากบอกอะไรไหม *</label>
               <input type="text" id="reg-occupation" placeholder="เช่น อัศวินสายออม, แมวออฟฟิศ, ผู้กล้าเงินเดือนน้อย" required />
             </div>
 
@@ -1094,11 +1108,25 @@
                   <option value="ไม่ระบุ">ไม่ระบุ</option>
                   <option value="ชาย">ชาย</option>
                   <option value="หญิง">หญิง</option>
-                  <option value="LGBTQ+">LGBTQ+</option>
+                  <option value="เกย์ (Gay)">เกย์ (Gay)</option>
+                  <option value="เลสเบี้ยน (Lesbian)">เลสเบี้ยน (Lesbian)</option>
+                  <option value="ไบเซ็กชวล (Bisexual)">ไบเซ็กชวล (Bisexual)</option>
+                  <option value="ทรานส์เจนเดอร์หญิง / สาวประเภทสอง (Trans Woman)">ทรานส์เจนเดอร์หญิง / สาวประเภทสอง (Trans Woman)</option>
+                  <option value="ทรานส์เจนเดอร์ชาย (Trans Man)">ทรานส์เจนเดอร์ชาย (Trans Man)</option>
+                  <option value="ทอม">ทอม</option>
+                  <option value="ดี้">ดี้</option>
+                  <option value="เฟมบอย (Femboy)">เฟมบอย (Femboy)</option>
+                  <option value="นอนไบนารี (Non-binary)">นอนไบนารี (Non-binary)</option>
+                  <option value="เจนเดอร์ฟลูอิด (Genderfluid)">เจนเดอร์ฟลูอิด (Genderfluid)</option>
+                  <option value="แพนเซ็กชวล (Pansexual)">แพนเซ็กชวล (Pansexual)</option>
+                  <option value="เอเซ็กชวล (Asexual)">เอเซ็กชวล (Asexual)</option>
+                  <option value="เควียร์ (Queer)">เควียร์ (Queer)</option>
+                  <option value="อินเตอร์เซ็กส์ (Intersex)">อินเตอร์เซ็กส์ (Intersex)</option>
+                  <option value="LGBTQ+">LGBTQ+ / อื่นๆ</option>
                 </select>
               </div>
               <div class="form-group">
-                <label for="edit-occupation">อาชีพ / ฉายา (กรอกเองได้เลย)</label>
+                <label for="edit-occupation">อาชีพหรือสโลแกนหรืออยากบอกอะไรไหม</label>
                 <input type="text" id="edit-occupation" placeholder="เช่น อัศวินสายออม, แมวออฟฟิศ" required />
               </div>
               <div class="form-group full">
@@ -2325,8 +2353,8 @@
       const occupation = document.getElementById('reg-occupation').value.trim() || 'นักผจญภัย';
       const optOutRanking = document.getElementById('reg-opt-out').checked;
 
-      if (containsDirectProfanity(username) || containsDirectProfanity(communityName)) {
-        showToast('⚠️ กรุณาใช้ชื่อและ Username ที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+      if (containsDirectProfanity(username) || containsDirectProfanity(communityName) || containsDirectProfanity(age) || containsDirectProfanity(occupation)) {
+        showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
         return;
       }
 
@@ -2623,15 +2651,17 @@
     function handleUpdateProfile(e) {
       e.preventDefault();
       const nextCommunityName = document.getElementById('edit-community-name').value.trim();
-      if (containsDirectProfanity(nextCommunityName)) {
-        showToast('⚠️ กรุณาใช้ชื่อที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+      const nextAge = document.getElementById('edit-age').value.trim() || '1';
+      const nextOccupation = document.getElementById('edit-occupation').value.trim() || 'นักผจญภัย';
+      if (containsDirectProfanity(nextCommunityName) || containsDirectProfanity(nextAge) || containsDirectProfanity(nextOccupation)) {
+        showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
         return;
       }
       updateCurrentUser(u => {
         u.communityName = nextCommunityName;
-        u.age = document.getElementById('edit-age').value.trim() || '1';
+        u.age = nextAge;
         u.gender = document.getElementById('edit-gender').value;
-        u.occupation = document.getElementById('edit-occupation').value.trim() || 'นักผจญภัย';
+        u.occupation = nextOccupation;
         u.avatar = editAvatarData;
         u.optOutRanking = document.getElementById('edit-opt-out').checked;
       });
@@ -2688,6 +2718,10 @@
       }
       const wht = Number(document.getElementById('inc-wht').value || 0);
       const note = document.getElementById('inc-note').value.trim();
+      if (containsDirectProfanity(source) || containsDirectProfanity(note)) {
+        showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+        return;
+      }
       const sso = source === 'เงินเดือน' ? calcThaiSSO(amount) : 0;
       const netAmount = Math.max(0, amount - sso);
 
@@ -2805,6 +2839,10 @@
       if (rawCat === 'อื่นๆ') {
         const custom = document.getElementById('exp-custom-category').value.trim();
         expCategory = custom || 'อื่นๆ';
+      }
+      if (containsDirectProfanity(expCategory) || containsDirectProfanity(expNote)) {
+        showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+        return;
       }
 
       updateCurrentUser(u => {
@@ -2930,6 +2968,11 @@
     function handleAddVault(e) {
       e.preventDefault();
       const vName = document.getElementById('vault-name').value.trim();
+      const vDesc = document.getElementById('vault-desc').value.trim();
+      if (containsDirectProfanity(vName) || containsDirectProfanity(vDesc)) {
+        showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+        return;
+      }
       updateCurrentUser(u => {
         u.vaults = u.vaults || [];
         u.vaults.push({
@@ -2937,7 +2980,7 @@
           type: document.getElementById('vault-type').value,
           name: vName,
           balance: Number(document.getElementById('vault-balance').value),
-          desc: document.getElementById('vault-desc').value.trim(),
+          desc: vDesc,
           updatedAt: new Date().toISOString().slice(0, 10)
         });
         addPointLog(u, 20, `เพิ่มคลังเงินเก็บ/ลงทุน (${vName})`);
@@ -3024,6 +3067,10 @@
       const updatedAt = document.getElementById('debt-tag-date').value || new Date().toISOString().slice(0, 10);
       const reason = document.getElementById('debt-tag-reason').value.trim();
       if (!name) return;
+      if (containsDirectProfanity(name) || containsDirectProfanity(reason)) {
+        showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+        return;
+      }
 
       updateCurrentUser(u => {
         u.debtTags = u.debtTags || [];
@@ -3366,6 +3413,10 @@
       e.preventDefault();
       const category = document.getElementById('rem-category').value || 'pay';
       const title = document.getElementById('rem-title').value.trim();
+      if (containsDirectProfanity(title)) {
+        showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+        return;
+      }
       const amount = Number(document.getElementById('rem-amount').value);
       const mode = document.getElementById('rem-mode').value;
       const day = Number(document.getElementById('rem-day').value || 1);
