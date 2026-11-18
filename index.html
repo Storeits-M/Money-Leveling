@@ -1518,11 +1518,18 @@
                 <div class="form-grid">
                   <div class="form-group full">
                     <label for="debt-tag-name">ชื่อหัวข้อ / Tag (พิมพ์เองได้เลย) *</label>
-                    <input type="text" id="debt-tag-name" placeholder="เช่น บัตรเครดิต, ค่างวดรถ, ค่าไฟ, ค่าเน็ต" required />
+                    <input type="text" id="debt-tag-name" placeholder="เช่น บัตรเครดิต, ค่างวดรถ, ค่าไฟ, ค่าเน็ต, ประกันรถ" required />
+                  </div>
+                  <div class="form-group full">
+                    <label for="debt-tag-cycle">รอบบิล / ความถี่ *</label>
+                    <select id="debt-tag-cycle">
+                      <option value="monthly">🔄 รายเดือน (นับยอดจ่ายรีเซ็ตทุกเดือน)</option>
+                      <option value="yearly">🗓️ รายปี (นับยอดจ่ายรวมตลอดปี)</option>
+                    </select>
                   </div>
                   <div class="form-group">
                     <label for="debt-tag-balance">ยอดหนี้คงเหลือปัจจุบัน (ไม่บังคับ)</label>
-                    <input type="number" id="debt-tag-balance" min="0" step="0.01" placeholder="เว้นว่างได้ถ้าเป็นบิลรายเดือน" />
+                    <input type="number" id="debt-tag-balance" min="0" step="0.01" placeholder="เว้นว่างได้ถ้าเป็นบิลประจำ (ไม่มียอดหนี้)" />
                   </div>
                   <div class="form-group">
                     <label for="debt-tag-default-pay">ยอดจ่ายต่อครั้ง / ขั้นต่ำ (ไม่บังคับ)</label>
@@ -3119,8 +3126,8 @@
             ? ` (คงเหลือ ${formatBaht(t.balance)})`
             : '';
           const payText = t.defaultPay !== null && t.defaultPay !== undefined && Number(t.defaultPay) > 0
-            ? ` [จ่าย ${formatBaht(t.defaultPay)}]`
-            : '';
+            ? ` [จ่าย ${formatBaht(t.defaultPay)}/${t.cycle === 'yearly' ? 'ปี' : 'เดือน'}]`
+            : (t.cycle === 'yearly' ? ' [รายปี]' : '');
           return `<option value="tag:${t.id}">🏷️ ${escapeHtml(t.name)}${payText}${balText}</option>`;
         }).join('');
         html += '</optgroup>';
@@ -3471,6 +3478,7 @@
     function handleAddDebtTag(e) {
       e.preventDefault();
       const name = document.getElementById('debt-tag-name').value.trim();
+      const cycle = (document.getElementById('debt-tag-cycle')?.value === 'yearly') ? 'yearly' : 'monthly';
       const rawBal = document.getElementById('debt-tag-balance').value.trim();
       const balance = rawBal === '' ? null : Math.max(0, Number(rawBal));
       const rawDefaultPay = document.getElementById('debt-tag-default-pay').value.trim();
@@ -3488,6 +3496,7 @@
         u.debtTags.push({
           id: 'tag_' + Date.now(),
           name,
+          cycle,
           balance,
           defaultPay,
           updatedAt,
@@ -3496,6 +3505,7 @@
       });
 
       document.getElementById('debt-tag-name').value = '';
+      if (document.getElementById('debt-tag-cycle')) document.getElementById('debt-tag-cycle').value = 'monthly';
       document.getElementById('debt-tag-balance').value = '';
       document.getElementById('debt-tag-default-pay').value = '';
       document.getElementById('debt-tag-reason').value = '';
@@ -3510,6 +3520,11 @@
       if (!tag) return;
       const nextName = prompt('แก้ไขชื่อ Tag / หัวข้อ:', tag.name);
       if (nextName === null || !nextName.trim()) return;
+      const curCycleLabel = tag.cycle === 'yearly' ? 'รายปี' : 'รายเดือน';
+      const nextCycleRaw = prompt('รอบบิล (พิมพ์ "รายเดือน" หรือ "รายปี"):', curCycleLabel);
+      if (nextCycleRaw === null) return;
+      const cycleLower = nextCycleRaw.trim().toLowerCase();
+      const parsedCycle = (cycleLower.includes('ปี') || cycleLower === 'yearly' || cycleLower === 'y' || cycleLower === '2') ? 'yearly' : 'monthly';
       const curBalStr = tag.balance !== null && tag.balance !== undefined ? String(tag.balance) : '';
       const nextBalStr = prompt('แก้ไขยอดหนี้คงเหลือ (เว้นว่างได้ถ้าไม่ระบุยอดหนี้):', curBalStr);
       if (nextBalStr === null) return;
@@ -3539,6 +3554,7 @@
         const target = (user.debtTags || []).find(t => t.id === id);
         if (!target) return;
         target.name = nextName.trim();
+        target.cycle = parsedCycle;
         target.balance = parsedBal;
         target.defaultPay = parsedPay;
         target.updatedAt = parsedDate;
@@ -3649,21 +3665,36 @@
       if (!u) return;
       const list = u.debtTags || [];
       const expenses = u.expenses || [];
+      const curMonth = getCurrentMonthKey();
+      const curYear = curMonth.slice(0, 4);
       const el = document.getElementById('debt-tag-list');
       if (!el) return;
 
       el.innerHTML = list.length === 0
         ? '<div style="text-align:center; color:var(--text-muted); padding:24px;">ยังไม่มี Tag หนี้หรือบิลประจำ — เพิ่มทางฝั่งซ้ายเพื่อนำไปเลือกตอนจ่ายบิลได้เลยครับ</div>'
         : list.map((t, idx) => {
-          const paidFromLogs = expenses
-            .filter(e => e.debtTagId === t.id || (!e.debtTagId && e.category === t.name))
+          const isYearly = t.cycle === 'yearly';
+          const tagLogs = expenses.filter(e => e.debtTagId === t.id || (!e.debtTagId && e.category === t.name));
+          const paidPeriod = tagLogs
+            .filter(e => String(e.date || '').startsWith(isYearly ? curYear : curMonth))
             .reduce((s, e) => s + Number(e.amount || 0), 0);
+          const paidAll = tagLogs.reduce((s, e) => s + Number(e.amount || 0), 0);
+          const cycleChip = isYearly
+            ? '<span style="font-size:0.72rem; color:#7c3aed; background:#f3e8ff; padding:1px 7px; border-radius:999px; margin-left:6px; font-weight:600;">🗓️ รายปี</span>'
+            : '<span style="font-size:0.72rem; color:#0369a1; background:#e0f2fe; padding:1px 7px; border-radius:999px; margin-left:6px; font-weight:600;">🔄 รายเดือน</span>';
           const balHtml = t.balance !== null && t.balance !== undefined
             ? `<strong class="text-expense" style="white-space:nowrap;">${formatBaht(t.balance)}</strong>`
-            : '<span style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap; background:#f3ede2; padding:2px 8px; border-radius:999px;">บิลประจำ</span>';
+            : `<span style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap; background:#f3ede2; padding:2px 8px; border-radius:999px;">${isYearly ? 'บิลรายปี' : 'บิลรายเดือน'}</span>`;
           const defaultPayHtml = t.defaultPay !== null && t.defaultPay !== undefined && Number(t.defaultPay) > 0
-            ? `<span style="color:var(--wood-dark); font-weight:600;">ยอดจ่ายประจำ: ${formatBaht(t.defaultPay)}</span> • `
+            ? `<span style="color:var(--wood-dark); font-weight:600;">ยอดจ่ายประจำ: ${formatBaht(t.defaultPay)}/${isYearly ? 'ปี' : 'เดือน'}</span> • `
             : '';
+          let paidHtml = '';
+          if (paidPeriod > 0) {
+            paidHtml = `• ${isYearly ? `จ่ายปีนี้ (${curYear})` : 'จ่ายเดือนนี้'}: <span class="text-income">${formatBaht(paidPeriod)}</span>`;
+            if (paidAll > paidPeriod) paidHtml += ` <span style="font-size:0.78rem;">(สะสม ${formatBaht(paidAll)})</span>`;
+          } else if (paidAll > 0) {
+            paidHtml = `• ${isYearly ? `ปีนี้ (${curYear})` : 'เดือนนี้'}: ฿0 <span style="font-size:0.78rem;">(สะสม ${formatBaht(paidAll)})</span>`;
+          }
           return `
             <div class="tx-item" draggable="true" ondragstart="handleDebtTagDragStart(event, '${t.id}')" ondragover="handleDebtTagDragOver(event)" ondragleave="handleDebtTagDragLeave(event)" ondrop="handleDebtTagDrop(event, '${t.id}')" ondragend="handleDebtTagDragEnd(event)" style="cursor:grab;">
               <div class="tx-left">
@@ -3674,11 +3705,11 @@
                 </div>
                 <div class="tx-icon">🏷️</div>
                 <div>
-                  <div style="font-weight:600;"><span style="color:var(--text-muted); font-size:0.82rem;">#${idx + 1}</span> ${escapeHtml(t.name)}</div>
+                  <div style="font-weight:600;"><span style="color:var(--text-muted); font-size:0.82rem;">#${idx + 1}</span> ${escapeHtml(t.name)}${cycleChip}</div>
                   <div class="tx-meta">
                     ${defaultPayHtml}อัปเดต: ${escapeHtml(formatDateDMY(t.updatedAt || '-'))}
                     ${t.reason ? `• เหตุผล: ${escapeHtml(t.reason)}` : ''}
-                    ${paidFromLogs > 0 ? `• จ่ายแล้วจาก Log: <span class="text-income">${formatBaht(paidFromLogs)}</span>` : ''}
+                    ${paidHtml}
                   </div>
                 </div>
               </div>
