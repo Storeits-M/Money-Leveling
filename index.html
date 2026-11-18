@@ -1684,7 +1684,6 @@
                 <div class="form-group full">
                   <label for="rem-category">ประเภทการแจ้งเตือน *</label>
                   <select id="rem-category">
-                    <option value="pay">💳 เตือนจ่ายเงิน / ชำระหนี้ / บิลรายเดือน</option>
                     <option value="save">🏦 เตือนเก็บเงิน / ออมเงินเข้าคลัง</option>
                     <option value="invest">📈 เตือนลงทุน / DCA กองทุน-หุ้น-ทอง</option>
                     <option value="other">📌 แจ้งเตือนการเงินอื่นๆ</option>
@@ -4210,7 +4209,19 @@
       const r = (u && u.reminders || []).find(x => x.id === id);
       if (!r) return;
       editingReminderId = id;
-      document.getElementById('rem-category').value = r.category || 'pay';
+      const catSel = document.getElementById('rem-category');
+      if (catSel) {
+        const oldTemp = catSel.querySelector('option[data-temp-pay="1"]');
+        if (oldTemp) oldTemp.remove();
+        if (r.category === 'pay') {
+          const opt = document.createElement('option');
+          opt.value = 'pay';
+          opt.textContent = '💳 เตือนจ่ายเงิน / ชำระหนี้ / บิล (ซิงค์จาก Tag)';
+          opt.dataset.tempPay = '1';
+          catSel.prepend(opt);
+        }
+        catSel.value = r.category || 'save';
+      }
       document.getElementById('rem-title').value = r.title || '';
       document.getElementById('rem-amount').value = r.amount || '';
       document.getElementById('rem-mode').value = r.mode || 'monthly';
@@ -4228,6 +4239,12 @@
 
     function cancelEditReminder() {
       editingReminderId = null;
+      const catSel = document.getElementById('rem-category');
+      if (catSel) {
+        const tempPay = catSel.querySelector('option[data-temp-pay="1"]');
+        if (tempPay) tempPay.remove();
+        catSel.value = 'save';
+      }
       document.getElementById('rem-title').value = '';
       document.getElementById('rem-amount').value = '';
       const subBtn = document.getElementById('rem-submit-btn');
