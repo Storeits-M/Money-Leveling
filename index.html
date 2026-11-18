@@ -1655,27 +1655,21 @@
       const month = now.getMonth() + 1; // 1..12
       const dayRatio = Math.min(1, Math.max(0.25, now.getDate() / 28));
 
-      // Deterministic monthly oscillation (-45% to +55%) so ranks swap each month
-      const wave = (m) => {
-        const raw = Math.sin(year * 19 + m * 31 + npc.seed * 13);
-        return 1 + raw * 0.45;
+      // Average monthly points needed to reach yearEndTarget over 12 months
+      const avgPerMonth = npc.yearEndTarget / 11.5;
+
+      const calcMonthPts = (m, isCurrentMonth) => {
+        const wave = 1 + Math.sin(year * 19 + m * 31 + npc.seed * 13) * 0.28;
+        const ratio = isCurrentMonth ? dayRatio : 1;
+        return Math.max(5, Math.round(avgPerMonth * wave * ratio));
       };
 
-      // Current month score (resets every month, fluctuates so NPCs overtake each other)
-      const currentMonthAvg = npc.yearEndTarget / 12;
-      const monthlyScore = Math.max(
-        15,
-        Math.round((npc.monthlyBase * 0.55 + currentMonthAvg * 0.45) * wave(month) * dayRatio)
-      );
-
-      // Yearly cumulative score: starts at Novice in Jan (month 1), grows each month to reach yearEndTarget by Nov-Dec
       let yearlyScore = 0;
-      if (month === 1) {
-        // Every Jan everyone resets to Novice (0-75)
-        yearlyScore = Math.min(75, Math.round(monthlyScore * 0.45));
-      } else {
-        const progress = Math.min(1, (month - 1 + dayRatio * 0.6) / 10.6);
-        yearlyScore = Math.round(npc.yearEndTarget * progress);
+      let monthlyScore = 0;
+      for (let m = 1; m <= month; m++) {
+        const pts = calcMonthPts(m, m === month);
+        yearlyScore += pts;
+        if (m === month) monthlyScore = pts;
       }
 
       const allTimeScore = npc.yearEndTarget + yearlyScore;
