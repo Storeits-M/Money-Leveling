@@ -843,12 +843,51 @@
       .nav-tabs { grid-template-columns: 1fr; }
       .rpg-panel { padding: 15px 12px; }
     }
+
+    /* Landscape Enforcement Overlay for Mobile & Tablet in Portrait */
+    .rotate-landscape-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: linear-gradient(160deg, #3b2313 0%, #5c3419 100%);
+      color: #fff8eb;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 28px;
+      gap: 14px;
+    }
+    .rotate-phone-icon {
+      font-size: 3.4rem;
+      animation: rotateHint 1.8s ease-in-out infinite;
+    }
+    @keyframes rotateHint {
+      0%, 20% { transform: rotate(0deg); }
+      55%, 80% { transform: rotate(90deg); }
+      100% { transform: rotate(0deg); }
+    }
+    @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+      .rotate-landscape-overlay { display: flex; }
+      body { overflow: hidden; }
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
+  <div class="rotate-landscape-overlay" role="dialog" aria-live="polite">
+    <div class="rotate-phone-icon">📱</div>
+    <h2 style="font-family: 'Fredoka', 'Kanit', sans-serif; color: #fde047; font-size: 1.45rem;">
+      กรุณาหมุนหน้าจอเป็นแนวนอน
+    </h2>
+    <p style="max-width: 340px; font-size: 0.95rem; opacity: 0.92; line-height: 1.5;">
+      เพื่อการแสดงผลตาราง การ์ด และแถบเครื่องมือที่ครบถ้วนบนมือถือ/แท็บเล็ต โปรดหมุนเครื่องเป็นแนวนอน (Landscape) เพื่อใช้งานครับ
+    </p>
+  </div>
+
   <div class="tent-drape-top" aria-hidden="true"></div>
 
   <div class="app-shell">
@@ -1290,7 +1329,7 @@
                   </div>
                   <div class="form-group full">
                     <label for="exp-category">หมวดหมู่รายจ่าย / Tag หนี้ &amp; บิล</label>
-                    <select id="exp-category" onchange="toggleCustomExpenseCategory()">
+                    <select id="exp-category" onchange="toggleCustomExpenseCategory()" required>
                       <option value="อื่นๆ">📦 อื่นๆ (พิมพ์ระบุเอง)</option>
                     </select>
                   </div>
@@ -2741,6 +2780,8 @@
             : '';
           return `<option value="tag:${t.id}">🏷️ ${escapeHtml(t.name)}${balText}</option>`;
         }).join('');
+      } else {
+        html += '<option value="" disabled selected>-- ยังไม่มี Tag (ไปกำหนดในข้อ 5 หรือเลือก อื่นๆ) --</option>';
       }
       html += '<option value="อื่นๆ">📦 อื่นๆ (พิมพ์ระบุเอง)</option>';
 
