@@ -1548,7 +1548,7 @@
             <div>
               <div class="wood-pill-title" style="margin-bottom:4px;">🏆 ระบบจัดอันดับ (Ranking) — วัดจากวินัย Transaction</div>
               <div style="font-size:0.86rem; color:var(--text-muted);">
-                ประเมินคะแนนใหม่ทุกๆ ต้นเดือน • แฟร์สำหรับทุกคน ไม่วัดจากจำนวนเงินทุนหรือทรัพย์สิน แต่วัดจากความสม่ำเสมอในการทำรายการ (+/-)
+                คะแนนรายเดือนรีเซ็ตทุกวันที่ 1 • ระดับคลาส (Novice – God) อิงจากคะแนนสะสมประจำปีและรีเซ็ตทุกๆ ปีใหม่ • วัดจากวินัย Transaction (+/-)
               </div>
             </div>
             <div style="display:flex; gap:6px; background:var(--canvas-mid); padding:4px; border-radius:var(--radius-sm); border:1.5px solid #bfa07a;">
@@ -1700,9 +1700,9 @@
       return current;
     }
 
-    function renderRoClassBadge(allTimeScore) {
-      const cls = getRoClassByAllTimeScore(allTimeScore);
-      return `<span class="ro-class-badge" style="background:${cls.bg}; border-color:${cls.border}; color:${cls.color};" title="ระดับอิงจากคะแนนรวมทั้งหมด (${allTimeScore} แต้ม)">${cls.svg}<span>${cls.name}</span></span>`;
+    function renderRoClassBadge(yearlyScore) {
+      const cls = getRoClassByAllTimeScore(yearlyScore);
+      return `<span class="ro-class-badge" style="background:${cls.bg}; border-color:${cls.border}; color:${cls.color};" title="ระดับคลาสอิงจากคะแนนสะสมประจำปี (รีเซ็ตทุกปี) — ${yearlyScore} แต้ม">${cls.svg}<span>${cls.name}</span></span>`;
     }
 
     let rankingMode = 'monthly';
@@ -1836,8 +1836,9 @@
     }
 
     function computeUserRankingScores(user) {
-      if (!user) return { monthlyScore: 0, allTimeScore: 0, curMonth: getCurrentMonthKey(), monthlyActionPts: 0, monthlyDisciplinePts: 0, overduePenalty: 0, overdueCount: 0, logs: [] };
       const curMonth = getCurrentMonthKey();
+      const curYear = curMonth.slice(0, 4);
+      if (!user) return { monthlyScore: 0, yearlyScore: 0, allTimeScore: 0, curMonth, curYear, monthlyActionPts: 0, monthlyDisciplinePts: 0, overduePenalty: 0, overdueCount: 0, logs: [] };
       let logs = user.pointLogs;
       if (!Array.isArray(logs)) {
         const clone = { ...user };
@@ -1853,6 +1854,7 @@
       expenses.forEach(e => { if (e.date) monthSet.add(e.date.slice(0, 7)); });
 
       let allTimeScore = 0;
+      let yearlyScore = 0;
       let monthlyScore = 0;
       let monthlyActionPts = 0;
       let monthlyDisciplinePts = 0;
@@ -1880,6 +1882,7 @@
         const mOverdue = m === curMonth ? overduePenalty : 0;
         const totalForMonth = actionPts + disciplinePts + mOverdue;
         allTimeScore += totalForMonth;
+        if (m.startsWith(curYear)) yearlyScore += totalForMonth;
         if (m === curMonth) {
           monthlyActionPts = actionPts;
           monthlyDisciplinePts = disciplinePts;
@@ -1889,7 +1892,9 @@
 
       return {
         curMonth,
+        curYear,
         monthlyScore,
+        yearlyScore,
         allTimeScore,
         monthlyActionPts,
         monthlyDisciplinePts,
@@ -2116,7 +2121,7 @@
       if (!user) return;
       const rScores = computeUserRankingScores(user);
       document.getElementById('topbar-name').textContent = user.communityName;
-      document.getElementById('topbar-class-badge').innerHTML = renderRoClassBadge(rScores.allTimeScore);
+      document.getElementById('topbar-class-badge').innerHTML = renderRoClassBadge(rScores.yearlyScore);
       document.getElementById('topbar-sub').textContent = `${user.occupation} • อายุ ${calcAgeFromDob(user.dob)} ปี`;
       document.getElementById('topbar-avatar').innerHTML = user.avatar ? `<img src="${user.avatar}" alt="Avatar" />` : '👤';
     }
@@ -2131,9 +2136,9 @@
 
       document.getElementById('report-avatar').innerHTML = user.avatar ? `<img src="${user.avatar}" alt="Avatar" />` : '👤';
       document.getElementById('report-community-name').textContent = user.communityName;
-      document.getElementById('report-class-badge').innerHTML = renderRoClassBadge(rScores.allTimeScore);
+      document.getElementById('report-class-badge').innerHTML = renderRoClassBadge(rScores.yearlyScore);
       document.getElementById('report-profile-meta').textContent =
-        `อาชีพ: ${user.occupation} | อายุจริง: ${age} ปี | เพศ: ${user.gender} | คะแนนรวม: ${rScores.allTimeScore} แต้ม`;
+        `อาชีพ: ${user.occupation} | อายุจริง: ${age} ปี | เพศ: ${user.gender} | คะแนนปี ${rScores.curYear}: ${rScores.yearlyScore} แต้ม (รวมทั้งหมด: ${rScores.allTimeScore} แต้ม)`;
 
       // RPG Battle HP Bar (Average Monthly Income vs Average Monthly Expense)
       const activeMonths = new Set();
@@ -3010,9 +3015,9 @@
 
       document.getElementById('ranking-my-summary').innerHTML = `
         <div class="stat-box">
-          <div class="stat-label">ระดับคลาส (อิงคะแนนรวม)</div>
-          <div style="margin:6px 0;">${renderRoClassBadge(myRank.allTimeScore)}</div>
-          <div class="stat-sub">คะแนนรวม ${myRank.allTimeScore} แต้ม</div>
+          <div class="stat-label">ระดับคลาสปี ${myRank.curYear} (รีเซ็ตทุกปี)</div>
+          <div style="margin:6px 0;">${renderRoClassBadge(myRank.yearlyScore)}</div>
+          <div class="stat-sub">คะแนนสะสมปี ${myRank.curYear}: ${myRank.yearlyScore} แต้ม</div>
         </div>
         <div class="stat-box">
           <div class="stat-label">📅 คะแนนประจำเดือน (${myRank.curMonth})</div>
@@ -3022,11 +3027,11 @@
         <div class="stat-box">
           <div class="stat-label">🌟 คะแนนสะสมรวมทั้งหมด</div>
           <div class="stat-value" style="color:var(--wood-dark);">${myRank.allTimeScore} แต้ม</div>
-          <div class="stat-sub">รีเซ็ตคะแนนรายเดือนทุกวันที่ 1</div>
+          <div class="stat-sub">รายเดือนรีเซ็ตวันที่ 1 • ระดับคลาสรีเซ็ตทุกปีใหม่</div>
         </div>
       `;
 
-      const myClass = getRoClassByAllTimeScore(myRank.allTimeScore);
+      const myClass = getRoClassByAllTimeScore(myRank.yearlyScore);
       document.getElementById('ranking-class-strip').innerHTML = RO_CLASSES.map(cls => {
         const active = cls.name === myClass.name;
         return `<span class="ro-class-badge" style="background:${cls.bg}; border-color:${cls.border}; color:${cls.color}; opacity:${active ? '1' : '0.68'}; ${active ? 'box-shadow:0 0 0 2px #f59e0b;' : ''}">${cls.svg}<span>${cls.name} (${cls.minScore}+)</span></span>`;
@@ -3047,7 +3052,7 @@
             age: calcAgeFromDob(u.dob),
             avatar: u.avatar || '',
             savingsRate: s.mSaveRate,
-            allTimeScore: r.allTimeScore,
+            yearlyScore: r.yearlyScore,
             score: rankingMode === 'monthly' ? r.monthlyScore : r.allTimeScore
           };
         });
@@ -3061,7 +3066,7 @@
         age: m.age,
         avatar: m.avatar,
         savingsRate: m.savingsRate,
-        allTimeScore: m.allTimeScore,
+        yearlyScore: m.allTimeScore,
         score: rankingMode === 'monthly' ? m.monthlyScore : m.allTimeScore
       }));
 
@@ -3086,7 +3091,7 @@
               </div>
             </div>
             <div style="display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              ${renderRoClassBadge(entry.allTimeScore)}
+              ${renderRoClassBadge(entry.yearlyScore)}
             </div>
             <div style="text-align:right; flex-shrink:0; min-width:84px;">
               <div style="font-weight:700; font-size:1.05rem; color:var(--wood-dark);">${entry.score} แต้ม</div>
