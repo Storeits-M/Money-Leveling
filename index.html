@@ -1017,7 +1017,7 @@
           🤖 แผนการเงิน AI
         </button>
         <button type="button" class="nav-tab" id="nav-tab-reminder" onclick="switchTab('reminder')">
-          ⏰ แจ้งเตือนชำระหนี้
+          ⏰ แจ้งเตือนการเงิน
         </button>
         <button type="button" class="nav-tab" id="nav-tab-ranking" onclick="switchTab('ranking')">
           🏆 Ranking
@@ -1496,19 +1496,28 @@
         </div>
       </div>
 
-      <!-- ==================== TAB 4: DEBT & BILL REMINDERS ==================== -->
+      <!-- ==================== TAB 4: FINANCIAL REMINDERS ==================== -->
       <div id="tab-reminder" class="hidden">
         <div class="two-col">
           <div class="rpg-panel">
-            <div class="wood-pill-title">⏰ ตั้งค่าแจ้งเตือนชำระหนี้ / บิลรายเดือน</div>
+            <div class="wood-pill-title">⏰ ตั้งค่าแจ้งเตือนการเงิน (จ่าย / เก็บ / ลงทุน)</div>
             <form onsubmit="handleAddReminder(event)">
               <div class="form-grid">
                 <div class="form-group full">
-                  <label for="rem-title">ชื่อรายการที่ต้องชำระ *</label>
-                  <input type="text" id="rem-title" placeholder="เช่น บัตรเครดิต SCB, ค่างวดรถ, ค่าเน็ตบ้าน" required />
+                  <label for="rem-category">ประเภทการแจ้งเตือน *</label>
+                  <select id="rem-category">
+                    <option value="pay">💳 เตือนจ่ายเงิน / ชำระหนี้ / บิลรายเดือน</option>
+                    <option value="save">🏦 เตือนเก็บเงิน / ออมเงินเข้าคลัง</option>
+                    <option value="invest">📈 เตือนลงทุน / DCA กองทุน-หุ้น-ทอง</option>
+                    <option value="other">📌 แจ้งเตือนการเงินอื่นๆ</option>
+                  </select>
+                </div>
+                <div class="form-group full">
+                  <label for="rem-title">ชื่อรายการแจ้งเตือน *</label>
+                  <input type="text" id="rem-title" placeholder="เช่น บัตรเครดิต SCB, โอนเก็บเงินฉุกเฉิน, DCA กองทุน" required />
                 </div>
                 <div class="form-group">
-                  <label for="rem-amount">ยอดเงินที่ต้องจ่าย (บาท) *</label>
+                  <label for="rem-amount">จำนวนเงิน (บาท) *</label>
                   <input type="number" id="rem-amount" min="1" step="0.01" placeholder="เช่น 5500" required />
                 </div>
                 <div class="form-group">
@@ -1523,14 +1532,14 @@
                   <input type="number" id="rem-day" min="1" max="31" value="25" />
                 </div>
                 <div class="form-group full hidden" id="rem-date-wrap">
-                  <label for="rem-date">ระบุวันที่ครบกำหนดชำระ *</label>
+                  <label for="rem-date">ระบุวันที่แจ้งเตือน *</label>
                   <input type="date" id="rem-date" />
                 </div>
               </div>
               <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 14px;">💾 บันทึกการแจ้งเตือน</button>
             </form>
             <div class="info-callout" style="margin-top: 14px; margin-bottom: 0;">
-              💡 รายการที่ยังไม่จ่ายจะแสดงใน <strong>ป้ายลอยมุมขวาล่าง</strong> โดยจะเปลี่ยนเป็นสีแดงอัตโนมัติเมื่อเหลือเวลา ≤ 3 วัน และเมื่อติ๊ก "จ่ายแล้ว" ป้ายจะซ่อนให้ทันทีในเดือนนั้น
+              💡 รายการที่ยังไม่ทำจะแสดงใน <strong>ป้ายลอยด้านขวาบน</strong> โดยจะเปลี่ยนเป็นสีแดงอัตโนมัติเมื่อเหลือเวลา ≤ 3 วัน และเมื่อติ๊ก "ทำแล้ว/จ่ายแล้ว" ป้ายจะซ่อนให้ทันทีในรอบนั้น (ใช้สำหรับแจ้งเตือนอย่างเดียว ไม่คิดคะแนน Ranking)
             </div>
           </div>
 
@@ -1566,7 +1575,7 @@
           <div class="rpg-panel">
             <div class="wood-pill-title">📖 กติกาการคิดคะแนน (+/-)</div>
             <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:8px;">
-              ทุกๆ การแอคชั่นในระบบ Transaction และแจ้งเตือนชำระหนี้ จะถูกบันทึกเป็นคะแนนทันที โดยคะแนนประจำเดือนจะรีเซ็ตเริ่มใหม่ทุกวันที่ 1 ของเดือน และสะสมเข้าคะแนนรวมทั้งหมด
+              ทุกๆ การแอคชั่นในระบบ Transaction จะถูกบันทึกเป็นคะแนนทันที (ป้ายแจ้งเตือนชำระหนี้ใช้สำหรับเตือนอย่างเดียว ไม่นำมาคิดคะแนน) โดยคะแนนประจำเดือนจะรีเซ็ตเริ่มใหม่ทุกวันที่ 1 ของเดือน และระดับคลาสรีเซ็ตทุกปี
             </p>
             <div class="rank-rule-grid">
               <div class="rank-rule-card">
@@ -1582,10 +1591,6 @@
                 <span class="rank-badge-plus">+20</span>
               </div>
               <div class="rank-rule-card">
-                <div><strong>⏰ จ่ายบิล/หนี้ตรงเวลา</strong><br/><small style="color:var(--text-muted);">ติ๊กจ่ายแล้วก่อนหรือตรงวันครบกำหนด</small></div>
-                <span class="rank-badge-plus">+25</span>
-              </div>
-              <div class="rank-rule-card">
                 <div><strong>🎯 โบนัสวินัยออม ≥ 20%</strong><br/><small style="color:var(--text-muted);">ประเมินรายเดือนเมื่อมีรายรับและออมได้ ≥ 20%</small></div>
                 <span class="rank-badge-plus">+30</span>
               </div>
@@ -1596,10 +1601,6 @@
               <div class="rank-rule-card">
                 <div><strong>🔥 ใช้จ่ายเกินรายรับรายเดือน</strong><br/><small style="color:var(--text-muted);">เมื่อรายจ่ายรวมเดือนนั้นมากกว่ารายรับสุทธิ</small></div>
                 <span class="rank-badge-minus">-15</span>
-              </div>
-              <div class="rank-rule-card">
-                <div><strong>⚠️ บิล/หนี้สินเกินกำหนด</strong><br/><small style="color:var(--text-muted);">ต่อรายการที่ค้างชำระเลยกำหนดในเดือนนั้น</small></div>
-                <span class="rank-badge-minus">-20</span>
               </div>
             </div>
           </div>
@@ -1621,7 +1622,7 @@
     </button>
     <div class="floating-reminder-body">
       <div class="floating-reminder-head">
-        <span>⏰ แจ้งเตือนชำระหนี้</span>
+        <span>⏰ แจ้งเตือนการเงิน</span>
         <div style="display:flex; align-items:center; gap:6px;">
           <small style="color:var(--text-muted);" id="floating-rem-count"></small>
           <button type="button" class="floating-collapse-btn" onclick="toggleFloatingReminder(true)" title="พับเก็บไปด้านขวา">พับ ❯</button>
@@ -1859,16 +1860,6 @@
       let monthlyActionPts = 0;
       let monthlyDisciplinePts = 0;
 
-      // Overdue unpaid reminders in current month (-20 each)
-      let overdueCount = 0;
-      if (typeof getReminderCycleInfo === 'function') {
-        (user.reminders || []).forEach(r => {
-          const info = getReminderCycleInfo(r);
-          if (info.shouldFloat && !info.isPaid && info.diffDays < 0) overdueCount++;
-        });
-      }
-      const overduePenalty = overdueCount * -20;
-
       monthSet.forEach(m => {
         const actionPts = logs.filter(l => l.month === m).reduce((s, l) => s + Number(l.delta || 0), 0);
         const mIncNet = incomes.filter(i => (i.date || '').startsWith(m)).reduce((s, i) => s + Number(i.netAmount ?? i.amount ?? 0), 0);
@@ -1879,8 +1870,7 @@
           if (saveRate >= 20) disciplinePts += 30;
           if (mExp > mIncNet) disciplinePts -= 15;
         }
-        const mOverdue = m === curMonth ? overduePenalty : 0;
-        const totalForMonth = actionPts + disciplinePts + mOverdue;
+        const totalForMonth = actionPts + disciplinePts;
         allTimeScore += totalForMonth;
         if (m.startsWith(curYear)) yearlyScore += totalForMonth;
         if (m === curMonth) {
@@ -1898,8 +1888,6 @@
         allTimeScore,
         monthlyActionPts,
         monthlyDisciplinePts,
-        overduePenalty,
-        overdueCount,
         logs
       };
     }
@@ -2028,6 +2016,29 @@
       document.getElementById('tab-btn-signup').classList.toggle('active', mode === 'signup');
     }
 
+    function containsDirectProfanity(text) {
+      const raw = String(text || '').replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+      if (!raw) return false;
+      const lower = raw.toLowerCase();
+
+      const directThaiWords = [
+        'ควย', 'เย็ด', 'เหี้ย', 'เชี่ย', 'สัส', 'ส้นตีน', 'ระยำ', 'จัญไร', 'สถุน',
+        'สันดาน', 'กะหรี่', 'เงี่ยน', 'ตอแหล', 'ชักว่าว', 'อีดอก', 'อีสัตว์', 'ไอ้สัตว์',
+        'แม่ง', 'พ่อง', 'มึง', 'จู๋', 'จิ๋ม', 'แตด', 'หน้าหี', 'ดูดหี', 'เลียหี', 'อมควย',
+        'อมหำ', 'ดูดหำ', 'น้ำแตก', 'ควายเอ้ย'
+      ];
+      if (directThaiWords.some(w => lower.includes(w))) return true;
+
+      // Short Thai words matched standalone or with spaces to avoid false positives (e.g. หีบ)
+      if (/(^|\s)(หี|หำ|กู)(\s|$)/.test(lower)) return true;
+
+      // Direct English profanity / explicit sexual terms (word-boundary matched)
+      const enRegex = /\b(fuck|fucking|fucker|motherfucker|shit|bullshit|bitch|asshole|bastard|cunt|dick|dickhead|cock|pussy|whore|slut|porn|pornhub|sex|xxx|blowjob|handjob|nigger|faggot)\b/i;
+      if (enRegex.test(lower)) return true;
+
+      return false;
+    }
+
     function handleSignup(e) {
       e.preventDefault();
       const username = document.getElementById('reg-username').value.trim();
@@ -2037,6 +2048,11 @@
       const gender = document.getElementById('reg-gender').value;
       const occupation = document.getElementById('reg-occupation').value;
       const optOutRanking = document.getElementById('reg-opt-out').checked;
+
+      if (containsDirectProfanity(username) || containsDirectProfanity(communityName)) {
+        showToast('⚠️ กรุณาใช้ชื่อและ Username ที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+        return;
+      }
 
       const users = loadUsers();
       if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
@@ -2260,8 +2276,13 @@
 
     function handleUpdateProfile(e) {
       e.preventDefault();
+      const nextCommunityName = document.getElementById('edit-community-name').value.trim();
+      if (containsDirectProfanity(nextCommunityName)) {
+        showToast('⚠️ กรุณาใช้ชื่อที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
+        return;
+      }
       updateCurrentUser(u => {
-        u.communityName = document.getElementById('edit-community-name').value.trim();
+        u.communityName = nextCommunityName;
         u.dob = document.getElementById('edit-dob').value;
         u.gender = document.getElementById('edit-gender').value;
         u.occupation = document.getElementById('edit-occupation').value;
@@ -2789,8 +2810,20 @@
       document.getElementById('rem-date-wrap').classList.toggle('hidden', mode !== 'once');
     }
 
+    const REMINDER_CATEGORIES = {
+      pay: { icon: '💳', label: 'เตือนจ่าย/ชำระหนี้', doneBtn: '✓ จ่ายแล้ว', undoneBtn: 'ยกเลิกจ่าย', doneText: 'จ่ายแล้ว', amtClass: 'text-expense' },
+      save: { icon: '🏦', label: 'เตือนเก็บเงิน/ออม', doneBtn: '✓ ออมแล้ว', undoneBtn: 'ยกเลิกออม', doneText: 'ออมแล้ว', amtClass: 'text-income' },
+      invest: { icon: '📈', label: 'เตือนลงทุน', doneBtn: '✓ ลงทุนแล้ว', undoneBtn: 'ยกเลิกลงทุน', doneText: 'ลงทุนแล้ว', amtClass: 'text-gold' },
+      other: { icon: '📌', label: 'แจ้งเตือนอื่นๆ', doneBtn: '✓ ทำแล้ว', undoneBtn: 'ยกเลิกทำแล้ว', doneText: 'ทำแล้ว', amtClass: 'text-purple' }
+    };
+
+    function getReminderCatMeta(cat) {
+      return REMINDER_CATEGORIES[cat] || REMINDER_CATEGORIES.pay;
+    }
+
     function handleAddReminder(e) {
       e.preventDefault();
+      const category = document.getElementById('rem-category').value || 'pay';
       const title = document.getElementById('rem-title').value.trim();
       const amount = Number(document.getElementById('rem-amount').value);
       const mode = document.getElementById('rem-mode').value;
@@ -2801,14 +2834,14 @@
         u.reminders = u.reminders || [];
         u.reminders.push({
           id: 'rem_' + Date.now(),
-          title, amount, mode, day, date,
+          category, title, amount, mode, day, date,
           paidMonths: []
         });
       });
 
       document.getElementById('rem-title').value = '';
       document.getElementById('rem-amount').value = '';
-      showToast('⏰ บันทึกการแจ้งเตือนชำระหนี้เรียบร้อย');
+      showToast('⏰ บันทึกการแจ้งเตือนเรียบร้อย');
       renderReminderTab();
       renderFloatingReminders();
     }
@@ -2880,24 +2913,17 @@
     }
 
     function markReminderPaid(id, cycleKey) {
-      let toastMsg = '✅ อัปเดตสถานะการชำระเรียบร้อย';
       updateCurrentUser(u => {
         const target = (u.reminders || []).find(r => r.id === id);
         if (!target) return;
-        const cycleInfo = getReminderCycleInfo(target);
         target.paidMonths = target.paidMonths || [];
         if (target.paidMonths.includes(cycleKey)) {
           target.paidMonths = target.paidMonths.filter(k => k !== cycleKey);
-          addPointLog(u, -25, `ยกเลิกสถานะจ่ายบิล (${target.title})`);
-          toastMsg = '↩️ ยกเลิกสถานะการชำระแล้ว (-25 คะแนน)';
         } else {
           target.paidMonths.push(cycleKey);
-          const pts = cycleInfo.diffDays >= 0 ? 25 : 10;
-          addPointLog(u, pts, cycleInfo.diffDays >= 0 ? `จ่ายบิลตรงเวลา (${target.title})` : `จ่ายบิลย้อนหลัง (${target.title})`);
-          toastMsg = `✅ บันทึกจ่ายบิลเรียบร้อย (+${pts} คะแนน)`;
         }
       });
-      showToast(toastMsg);
+      showToast('✅ อัปเดตสถานะการชำระเรียบร้อย');
       renderReminderTab();
       renderFloatingReminders();
     }
@@ -2915,21 +2941,22 @@
       const list = u.reminders || [];
       const el = document.getElementById('rem-list');
       el.innerHTML = list.length === 0
-        ? '<div style="text-align:center; color:var(--text-muted); padding:24px;">ยังไม่มีรายการแจ้งเตือนชำระหนี้</div>'
+        ? '<div style="text-align:center; color:var(--text-muted); padding:24px;">ยังไม่มีรายการแจ้งเตือน</div>'
         : list.map(r => {
           const info = getReminderCycleInfo(r);
+          const meta = getReminderCatMeta(r.category);
           return `
             <div class="tx-item">
               <div class="tx-left">
-                <div class="tx-icon">${info.isPaid ? '✅' : '⏰'}</div>
+                <div class="tx-icon">${info.isPaid ? '✅' : meta.icon}</div>
                 <div>
-                  <div style="font-weight:600;">${escapeHtml(r.title)}</div>
-                  <div class="tx-meta">กำหนด: ${escapeHtml(info.dueLabel)} • ${info.isPaid ? '<span class="text-income">จ่ายแล้ว</span>' : (info.diffDays < 0 ? `<span class="text-expense">เกินกำหนด ${Math.abs(info.diffDays)} วัน</span>` : `อีก ${info.diffDays} วัน`)}</div>
+                  <div style="font-weight:600;">${escapeHtml(r.title)} <small style="color:var(--text-muted); font-weight:400;">(${meta.label})</small></div>
+                  <div class="tx-meta">กำหนด: ${escapeHtml(info.dueLabel)} • ${info.isPaid ? `<span class="text-income">${meta.doneText}</span>` : (info.diffDays < 0 ? `<span class="text-expense">เกินกำหนด ${Math.abs(info.diffDays)} วัน</span>` : `อีก ${info.diffDays} วัน`)}</div>
                 </div>
               </div>
               <div class="tx-right">
-                <strong class="text-expense">${formatBaht(r.amount)}</strong>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="markReminderPaid('${r.id}', '${info.cycleKey}')">${info.isPaid ? 'ยกเลิกจ่าย' : '✓ จ่ายแล้ว'}</button>
+                <strong class="${meta.amtClass}">${formatBaht(r.amount)}</strong>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="markReminderPaid('${r.id}', '${info.cycleKey}')">${info.isPaid ? meta.undoneBtn : meta.doneBtn}</button>
                 <button type="button" class="btn btn-danger" onclick="deleteReminder('${r.id}')">ลบ</button>
               </div>
             </div>
@@ -2972,9 +2999,10 @@
       document.getElementById('floating-rem-count').textContent = `${unpaid.length} รายการ`;
       document.getElementById('floating-rem-items').innerHTML = unpaid.map(({ rem, info }) => {
         const isUrgent = info.diffDays <= 3;
+        const meta = getReminderCatMeta(rem.category);
         let dayText = '';
         if (info.isNextMonthPreview) {
-          dayText = `📅 เตรียมเงินล่วงหน้า! รอบเดือนถัดไป (${info.dueLabel}) — อีก ${info.diffDays} วัน`;
+          dayText = `📅 เตรียมล่วงหน้า! รอบเดือนถัดไป (${info.dueLabel}) — อีก ${info.diffDays} วัน`;
         } else if (info.diffDays < 0) {
           dayText = `🔥 เกินกำหนด ${Math.abs(info.diffDays)} วัน!`;
         } else if (info.diffDays === 0) {
@@ -2986,8 +3014,8 @@
           <label class="rem-float-item ${isUrgent ? 'urgent' : ''}">
             <input type="checkbox" onchange="markReminderPaid('${rem.id}', '${info.cycleKey}')" />
             <div style="flex:1; min-width:0;">
-              <div style="font-weight:600;">${escapeHtml(rem.title)} — ${formatBaht(rem.amount)}</div>
-              <div style="font-size:0.76rem; opacity:0.9;">${dayText} • ติ๊กเพื่อซ่อน (จ่ายแล้ว)</div>
+              <div style="font-weight:600;">${meta.icon} ${escapeHtml(rem.title)} — ${formatBaht(rem.amount)}</div>
+              <div style="font-size:0.76rem; opacity:0.9;">${dayText} • ติ๊กเพื่อซ่อน (${meta.doneText})</div>
             </div>
           </label>
         `;
@@ -3022,7 +3050,7 @@
         <div class="stat-box">
           <div class="stat-label">📅 คะแนนประจำเดือน (${myRank.curMonth})</div>
           <div class="stat-value text-income">${myRank.monthlyScore} แต้ม</div>
-          <div class="stat-sub">แอคชั่น ${myRank.monthlyActionPts >= 0 ? '+' : ''}${myRank.monthlyActionPts} • วินัย ${myRank.monthlyDisciplinePts >= 0 ? '+' : ''}${myRank.monthlyDisciplinePts}${myRank.overduePenalty < 0 ? ` • ค้างบิล ${myRank.overduePenalty}` : ''}</div>
+          <div class="stat-sub">แอคชั่น ${myRank.monthlyActionPts >= 0 ? '+' : ''}${myRank.monthlyActionPts} • วินัย ${myRank.monthlyDisciplinePts >= 0 ? '+' : ''}${myRank.monthlyDisciplinePts}</div>
         </div>
         <div class="stat-box">
           <div class="stat-label">🌟 คะแนนสะสมรวมทั้งหมด</div>
