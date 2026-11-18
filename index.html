@@ -1401,6 +1401,15 @@
                     <label for="exp-custom-category">ระบุหมวดหมู่เอง *</label>
                     <input type="text" id="exp-custom-category" placeholder="เช่น ค่าซ่อมรถ, ซื้อของเข้าบ้าน" />
                   </div>
+                  <div class="form-group full" id="exp-source-vault-wrap">
+                    <label for="exp-source-vault">ตัดเงินจาก (แหล่งเงินที่จ่าย)</label>
+                    <select id="exp-source-vault">
+                      <option value="">💵 เงินสด / รายได้เดือนนี้ (หักจากยอดคงเหลือในมือ)</option>
+                    </select>
+                    <div style="font-size:0.76rem; color:var(--text-muted); margin-top:4px;">
+                      💡 หากเลือกตัดจากคลัง ระบบจะหักยอดในคลังนั้น (ไม่หักซ้ำจากเงินเดือนนี้) และถ้าเลือกจ่าย Tag หนี้ จะหักยอดหนี้ให้พร้อมกัน
+                    </div>
+                  </div>
                   <div class="form-group full">
                     <label for="exp-note">รายละเอียดเพิ่มเติม</label>
                     <input type="text" id="exp-note" placeholder="เช่น ค่าไฟเดือนนี้, จ่ายบัตรเครดิต, ค่าอาหาร" />
@@ -1522,10 +1531,35 @@
                   </div>
                   <div class="form-group full">
                     <label for="debt-tag-cycle">รอบบิล / ความถี่ *</label>
-                    <select id="debt-tag-cycle">
+                    <select id="debt-tag-cycle" onchange="toggleDebtTagDueFields()">
                       <option value="monthly">🔄 รายเดือน (นับยอดจ่ายรีเซ็ตทุกเดือน)</option>
                       <option value="yearly">🗓️ รายปี (นับยอดจ่ายรวมตลอดปี)</option>
                     </select>
+                  </div>
+                  <div class="form-group full" id="debt-tag-due-monthly-wrap">
+                    <label for="debt-tag-due-day">วันกำหนดจ่ายของทุกเดือน (1–31) (ไม่บังคับ — ใส่เพื่อสร้างแจ้งเตือนอัตโนมัติ)</label>
+                    <input type="number" id="debt-tag-due-day" min="1" max="31" placeholder="เช่น 5 (เว้นว่างได้หากไม่ต้องการแจ้งเตือน)" />
+                  </div>
+                  <div class="form-group full hidden" id="debt-tag-due-yearly-wrap">
+                    <label>วัน/เดือนกำหนดจ่ายประจำปี (ไม่บังคับ — ใส่เพื่อสร้างแจ้งเตือนอัตโนมัติ)</label>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                      <input type="number" id="debt-tag-due-yearly-day" min="1" max="31" placeholder="วันที่ (1-31)" style="flex:1; min-width:110px;" />
+                      <select id="debt-tag-due-yearly-month" style="flex:2; min-width:150px;">
+                        <option value="">-- ไม่ระบุเดือน (ไม่แจ้งเตือน) --</option>
+                        <option value="1">มกราคม</option>
+                        <option value="2">กุมภาพันธ์</option>
+                        <option value="3">มีนาคม</option>
+                        <option value="4">เมษายน</option>
+                        <option value="5">พฤษภาคม</option>
+                        <option value="6">มิถุนายน</option>
+                        <option value="7">กรกฎาคม</option>
+                        <option value="8">สิงหาคม</option>
+                        <option value="9">กันยายน</option>
+                        <option value="10">ตุลาคม</option>
+                        <option value="11">พฤศจิกายน</option>
+                        <option value="12">ธันวาคม</option>
+                      </select>
+                    </div>
                   </div>
                   <div class="form-group">
                     <label for="debt-tag-balance">ยอดหนี้คงเหลือปัจจุบัน (ไม่บังคับ)</label>
@@ -2196,7 +2230,7 @@
       monthSet.forEach(m => {
         const mIncomes = incomes.filter(i => (i.date || '').startsWith(m));
         const mExpensesAll = expenses.filter(e => (e.date || '').startsWith(m));
-        const mExpenses = mExpensesAll.filter(e => !e.isVaultTransfer && !e.vaultId);
+        const mExpenses = mExpensesAll.filter(e => !e.isVaultTransfer && !e.vaultId && !e.paidFromVault && !e.sourceVaultId);
         const mIncNet = mIncomes.reduce((s, i) => s + Number(i.netAmount ?? i.amount ?? 0), 0);
         const mExp = mExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
 
@@ -2332,9 +2366,11 @@
       const tInc = sumIncomes(incomes);
 
       const isTransfer = e => Boolean(e.isVaultTransfer || e.vaultId);
-      const mExpRealList = mExpList.filter(e => !isTransfer(e));
-      const yExpRealList = yExpList.filter(e => !isTransfer(e));
-      const tExpRealList = expenses.filter(e => !isTransfer(e));
+      const isFromVault = e => Boolean(e.paidFromVault || e.sourceVaultId);
+      const isNonCashExpense = e => isTransfer(e) || isFromVault(e);
+      const mExpRealList = mExpList.filter(e => !isNonCashExpense(e));
+      const yExpRealList = yExpList.filter(e => !isNonCashExpense(e));
+      const tExpRealList = expenses.filter(e => !isNonCashExpense(e));
 
       const mExp = mExpRealList.reduce((s, e) => s + Number(e.amount || 0), 0);
       const yExp = yExpRealList.reduce((s, e) => s + Number(e.amount || 0), 0);
@@ -2847,7 +2883,7 @@
       document.getElementById('m-wht').textContent = formatBaht(sum.mInc.wht);
 
       const catTotals = {};
-      (user.expenses || []).filter(e => (e.date || '').startsWith(sum.curMonth) && !e.isVaultTransfer && !e.vaultId).forEach(e => {
+      (user.expenses || []).filter(e => (e.date || '').startsWith(sum.curMonth) && !e.isVaultTransfer && !e.vaultId && !e.paidFromVault && !e.sourceVaultId).forEach(e => {
         catTotals[e.category] = (catTotals[e.category] || 0) + Number(e.amount);
       });
       const barsEl = document.getElementById('m-expense-bars');
@@ -3080,8 +3116,13 @@
     function toggleCustomExpenseCategory() {
       const sel = document.getElementById('exp-category');
       const wrap = document.getElementById('exp-custom-cat-wrap');
-      if (!sel || !wrap) return;
-      wrap.classList.toggle('hidden', sel.value !== 'อื่นๆ');
+      const srcWrap = document.getElementById('exp-source-vault-wrap');
+      const srcSel = document.getElementById('exp-source-vault');
+      if (!sel) return;
+      if (wrap) wrap.classList.toggle('hidden', sel.value !== 'อื่นๆ');
+      const isVaultIn = (sel.value || '').startsWith('vault:');
+      if (srcWrap) srcWrap.classList.toggle('hidden', isVaultIn);
+      if (isVaultIn && srcSel) srcSel.value = '';
     }
 
     function autoFillExpenseFromSelectedTag(forceClearOnEmpty) {
@@ -3145,6 +3186,20 @@
       if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
         sel.value = prevVal;
       }
+
+      const srcSel = document.getElementById('exp-source-vault');
+      if (srcSel) {
+        const prevSrc = srcSel.value;
+        let srcHtml = '<option value="">💵 เงินสด / รายได้เดือนนี้ (หักจากยอดคงเหลือในมือ)</option>';
+        if (vaults.length > 0) {
+          srcHtml += vaults.map(v => `<option value="${v.id}">🏦 ตัดจากคลัง: ${escapeHtml(v.name)} (คงเหลือ ${formatBaht(v.balance || 0)})</option>`).join('');
+        }
+        srcSel.innerHTML = srcHtml;
+        if (prevSrc && Array.from(srcSel.options).some(o => o.value === prevSrc)) {
+          srcSel.value = prevSrc;
+        }
+      }
+
       toggleCustomExpenseCategory();
       const amtEl = document.getElementById('exp-amount');
       if (amtEl && !amtEl.value) {
@@ -3157,12 +3212,16 @@
       const expAmount = Number(document.getElementById('exp-amount').value);
       const expDate = document.getElementById('exp-date').value;
       const rawCat = document.getElementById('exp-category').value;
+      const rawSourceVaultId = document.getElementById('exp-source-vault')?.value || '';
       const expNote = document.getElementById('exp-note').value.trim();
 
       let expCategory = rawCat;
       let debtTagId = null;
       let vaultId = null;
       let isVaultTransfer = false;
+      let sourceVaultId = null;
+      let sourceVaultName = '';
+      let paidFromVault = false;
 
       if (rawCat === 'อื่นๆ') {
         const custom = document.getElementById('exp-custom-category').value.trim();
@@ -3198,6 +3257,16 @@
             vault.updatedAt = expDate || new Date().toISOString().slice(0, 10);
           }
         }
+        if (!isVaultTransfer && rawSourceVaultId) {
+          const srcVault = (u.vaults || []).find(v => v.id === rawSourceVaultId);
+          if (srcVault) {
+            sourceVaultId = srcVault.id;
+            sourceVaultName = srcVault.name;
+            paidFromVault = true;
+            srcVault.balance = Math.max(0, Number(srcVault.balance || 0) - expAmount);
+            srcVault.updatedAt = expDate || new Date().toISOString().slice(0, 10);
+          }
+        }
         u.expenses.unshift({
           id: 'exp_' + Date.now(),
           amount: expAmount,
@@ -3206,13 +3275,24 @@
           debtTagId,
           vaultId,
           isVaultTransfer,
+          sourceVaultId,
+          sourceVaultName,
+          paidFromVault,
           note: expNote
         });
         const logMonth = (expDate || '').slice(0, 7) || getCurrentMonthKey();
+        if (debtTagId && u.reminders) {
+          const linkedRem = u.reminders.find(r => r.debtTagId === debtTagId);
+          if (linkedRem) {
+            linkedRem.paidMonths = linkedRem.paidMonths || [];
+            const cKey = linkedRem.mode === 'yearly' ? ('y_' + logMonth.slice(0, 4)) : logMonth;
+            if (!linkedRem.paidMonths.includes(cKey)) linkedRem.paidMonths.push(cKey);
+          }
+        }
         if (isVaultTransfer) {
           addPointLog(u, 10, `โอนออม/ลงทุนเข้าคลัง (${expCategory})`, logMonth);
         } else if (debtTagId) {
-          addPointLog(u, 15, `ชำระหนี้/บิล (${expCategory})`, logMonth);
+          addPointLog(u, 15, `ชำระหนี้/บิล (${expCategory})${paidFromVault ? ` [ตัดจากคลัง ${sourceVaultName}]` : ''}`, logMonth);
         } else {
           ensurePointLogsMigrated(u);
           const usedExpPts = (u.pointLogs || [])
@@ -3230,15 +3310,23 @@
       document.getElementById('exp-note').value = '';
       const customEl = document.getElementById('exp-custom-category');
       if (customEl) customEl.value = '';
+      const srcSelEl = document.getElementById('exp-source-vault');
+      if (srcSelEl) srcSelEl.value = '';
       showToast(
         isVaultTransfer
           ? '🏦 โอนเข้าคลังออม/ลงทุนและทบยอดการ์ดเดิมเรียบร้อย'
-          : (debtTagId ? '💸 บันทึกรายจ่ายและหักยอดหนี้เรียบร้อย' : '💸 บันทึกรายจ่ายเรียบร้อย')
+          : (paidFromVault && debtTagId
+            ? '🏦➡️🏷️ ตัดเงินจากคลังและหักยอดหนี้เรียบร้อย'
+            : (paidFromVault
+              ? '🏦 จ่ายบิลโดยตัดเงินจากคลังเรียบร้อย'
+              : (debtTagId ? '💸 บันทึกรายจ่ายและหักยอดหนี้เรียบร้อย' : '💸 บันทึกรายจ่ายเรียบร้อย')))
       );
       populateExpenseCategoryDropdown();
       renderExpenses();
       renderDebtTags();
       renderVaults();
+      renderReminderTab();
+      renderFloatingReminders();
     }
 
     function editExpense(id) {
@@ -3271,6 +3359,13 @@
             vault.updatedAt = new Date().toISOString().slice(0, 10);
           }
         }
+        if (target.sourceVaultId) {
+          const srcVault = (user.vaults || []).find(v => v.id === target.sourceVaultId);
+          if (srcVault) {
+            srcVault.balance = Math.max(0, Number(srcVault.balance || 0) + oldAmt - newAmt);
+            srcVault.updatedAt = new Date().toISOString().slice(0, 10);
+          }
+        }
         target.amount = newAmt;
         if (nextNote !== null) target.note = nextNote.trim();
       });
@@ -3279,6 +3374,8 @@
       renderExpenses();
       renderDebtTags();
       renderVaults();
+      renderReminderTab();
+      renderFloatingReminders();
     }
 
     function deleteExpense(id) {
@@ -3300,6 +3397,13 @@
               vault.updatedAt = new Date().toISOString().slice(0, 10);
             }
           }
+          if (target.sourceVaultId) {
+            const srcVault = (u.vaults || []).find(v => v.id === target.sourceVaultId);
+            if (srcVault) {
+              srcVault.balance = Number(srcVault.balance || 0) + Number(target.amount || 0);
+              srcVault.updatedAt = new Date().toISOString().slice(0, 10);
+            }
+          }
           addPointLog(u, -10, `ลบรายการรายจ่าย (${target.category || 'รายจ่าย'})`);
         }
       });
@@ -3308,6 +3412,8 @@
       renderExpenses();
       renderDebtTags();
       renderVaults();
+      renderReminderTab();
+      renderFloatingReminders();
     }
 
     function renderExpenses() {
@@ -3325,31 +3431,44 @@
       }).sort((a, b) => b.date.localeCompare(a.date));
 
       const isTransfer = e => Boolean(e.isVaultTransfer || e.vaultId);
-      const realExpTotal = list.filter(e => !isTransfer(e)).reduce((s, e) => s + Number(e.amount || 0), 0);
+      const isFromVault = e => Boolean(e.paidFromVault || e.sourceVaultId);
+      const realExpTotal = list.filter(e => !isTransfer(e) && !isFromVault(e)).reduce((s, e) => s + Number(e.amount || 0), 0);
       const transferTotal = list.filter(isTransfer).reduce((s, e) => s + Number(e.amount || 0), 0);
+      const vaultPaidTotal = list.filter(isFromVault).reduce((s, e) => s + Number(e.amount || 0), 0);
       const periodTotalEl = document.getElementById('exp-period-total');
+      let totalHtml = formatBaht(realExpTotal);
       if (transferTotal > 0) {
-        periodTotalEl.innerHTML = `${formatBaht(realExpTotal)} <span style="font-size:0.82rem; color:#0284c7; font-weight:500;">(+ โอนเข้าคลัง ${formatBaht(transferTotal)})</span>`;
-      } else {
-        periodTotalEl.textContent = formatBaht(realExpTotal);
+        totalHtml += ` <span style="font-size:0.82rem; color:#0284c7; font-weight:500;">(+ โอนเข้าคลัง ${formatBaht(transferTotal)})</span>`;
       }
+      if (vaultPaidTotal > 0) {
+        totalHtml += ` <span style="font-size:0.82rem; color:#7c3aed; font-weight:500;">(+ จ่ายจากคลัง ${formatBaht(vaultPaidTotal)})</span>`;
+      }
+      periodTotalEl.innerHTML = totalHtml;
 
       const el = document.getElementById('exp-list');
       el.innerHTML = list.length === 0
         ? '<div style="text-align:center; color:var(--text-muted); padding:24px;">ยังไม่มีรายจ่ายในช่วงที่เลือก</div>'
         : list.map(e => {
           const transfer = isTransfer(e);
+          const fromVault = isFromVault(e);
+          const icon = transfer ? '🏦' : (fromVault ? '💳' : '💸');
+          const amtHtml = transfer
+            ? `<strong style="color:#0284c7;">โอนออม ${formatBaht(e.amount)}</strong>`
+            : (fromVault
+              ? `<strong style="color:#7c3aed;">จากคลัง -${formatBaht(e.amount)}</strong>`
+              : `<strong class="text-expense">-${formatBaht(e.amount)}</strong>`);
+          const srcMeta = fromVault ? ` • ตัดจากคลัง: ${escapeHtml(e.sourceVaultName || 'คลังออม')}` : '';
           return `
           <div class="tx-item">
             <div class="tx-left">
-              <div class="tx-icon">${transfer ? '🏦' : '💸'}</div>
+              <div class="tx-icon">${icon}</div>
               <div>
                 <div style="font-weight:500;">${escapeHtml(e.note || e.category)}</div>
-                <div class="tx-meta">${escapeHtml(formatDateDMY(e.date))} • ${escapeHtml(e.category)}</div>
+                <div class="tx-meta">${escapeHtml(formatDateDMY(e.date))} • ${escapeHtml(e.category)}${srcMeta}</div>
               </div>
             </div>
             <div class="tx-right">
-              <strong class="${transfer ? '' : 'text-expense'}" style="${transfer ? 'color:#0284c7;' : ''}">${transfer ? 'โอนออม ' : '-'}${formatBaht(e.amount)}</strong>
+              ${amtHtml}
               <button type="button" class="btn btn-secondary btn-sm" onclick="editExpense('${e.id}')">แก้ไข</button>
               <button type="button" class="btn btn-danger" onclick="deleteExpense('${e.id}')">ลบ</button>
             </div>
@@ -3475,10 +3594,69 @@
     // SUBTAB 5: DEBT & RECURRING BILL TAGS
     let draggedDebtTagId = null;
 
+    function toggleDebtTagDueFields() {
+      const cycle = document.getElementById('debt-tag-cycle')?.value || 'monthly';
+      document.getElementById('debt-tag-due-monthly-wrap')?.classList.toggle('hidden', cycle !== 'monthly');
+      document.getElementById('debt-tag-due-yearly-wrap')?.classList.toggle('hidden', cycle !== 'yearly');
+    }
+
+    function syncDebtTagReminder(user, tag) {
+      user.reminders = user.reminders || [];
+      const existingIdx = user.reminders.findIndex(r => r.debtTagId === tag.id || r.id === 'rem_tag_' + tag.id);
+      const hasDue = tag.dueDay !== null && tag.dueDay !== undefined && Number(tag.dueDay) >= 1 && Number(tag.dueDay) <= 31
+        && (tag.cycle !== 'yearly' || (tag.dueMonth !== null && tag.dueMonth !== undefined && Number(tag.dueMonth) >= 1 && Number(tag.dueMonth) <= 12));
+      if (!hasDue) {
+        if (existingIdx >= 0) user.reminders.splice(existingIdx, 1);
+        return false;
+      }
+      const remAmt = Number(tag.defaultPay) > 0 ? Number(tag.defaultPay) : (Number(tag.balance) > 0 ? Number(tag.balance) : 0);
+      const mode = tag.cycle === 'yearly' ? 'yearly' : 'monthly';
+      const dueDay = Math.min(31, Math.max(1, Number(tag.dueDay)));
+      const dueMonth = tag.cycle === 'yearly' ? Math.min(12, Math.max(1, Number(tag.dueMonth))) : 1;
+      if (existingIdx >= 0) {
+        const r = user.reminders[existingIdx];
+        r.debtTagId = tag.id;
+        r.title = tag.name;
+        r.amount = remAmt;
+        r.mode = mode;
+        r.day = dueDay;
+        r.yearlyDay = dueDay;
+        r.yearlyMonth = dueMonth;
+      } else {
+        user.reminders.push({
+          id: 'rem_tag_' + tag.id,
+          debtTagId: tag.id,
+          category: 'pay',
+          title: tag.name,
+          amount: remAmt,
+          mode,
+          day: dueDay,
+          yearlyDay: dueDay,
+          yearlyMonth: dueMonth,
+          date: '',
+          paidMonths: []
+        });
+      }
+      return true;
+    }
+
     function handleAddDebtTag(e) {
       e.preventDefault();
       const name = document.getElementById('debt-tag-name').value.trim();
       const cycle = (document.getElementById('debt-tag-cycle')?.value === 'yearly') ? 'yearly' : 'monthly';
+      let dueDay = null;
+      let dueMonth = null;
+      if (cycle === 'monthly') {
+        const rawDueDay = (document.getElementById('debt-tag-due-day')?.value || '').trim();
+        if (rawDueDay !== '') dueDay = Math.min(31, Math.max(1, Math.round(Number(rawDueDay))));
+      } else {
+        const rawYDay = (document.getElementById('debt-tag-due-yearly-day')?.value || '').trim();
+        const rawYMonth = (document.getElementById('debt-tag-due-yearly-month')?.value || '').trim();
+        if (rawYDay !== '' && rawYMonth !== '') {
+          dueDay = Math.min(31, Math.max(1, Math.round(Number(rawYDay))));
+          dueMonth = Math.min(12, Math.max(1, Math.round(Number(rawYMonth))));
+        }
+      }
       const rawBal = document.getElementById('debt-tag-balance').value.trim();
       const balance = rawBal === '' ? null : Math.max(0, Number(rawBal));
       const rawDefaultPay = document.getElementById('debt-tag-default-pay').value.trim();
@@ -3491,27 +3669,38 @@
         return;
       }
 
+      let syncedRem = false;
       updateCurrentUser(u => {
         u.debtTags = u.debtTags || [];
-        u.debtTags.push({
+        const newTag = {
           id: 'tag_' + Date.now(),
           name,
           cycle,
+          dueDay,
+          dueMonth,
           balance,
           defaultPay,
           updatedAt,
           reason
-        });
+        };
+        u.debtTags.push(newTag);
+        syncedRem = syncDebtTagReminder(u, newTag);
       });
 
       document.getElementById('debt-tag-name').value = '';
       if (document.getElementById('debt-tag-cycle')) document.getElementById('debt-tag-cycle').value = 'monthly';
+      if (document.getElementById('debt-tag-due-day')) document.getElementById('debt-tag-due-day').value = '';
+      if (document.getElementById('debt-tag-due-yearly-day')) document.getElementById('debt-tag-due-yearly-day').value = '';
+      if (document.getElementById('debt-tag-due-yearly-month')) document.getElementById('debt-tag-due-yearly-month').value = '';
+      toggleDebtTagDueFields();
       document.getElementById('debt-tag-balance').value = '';
       document.getElementById('debt-tag-default-pay').value = '';
       document.getElementById('debt-tag-reason').value = '';
-      showToast('🏷️ บันทึก Tag หนี้ / บิลเรียบร้อย');
+      showToast(syncedRem ? '🏷️⏰ บันทึก Tag และสร้างแจ้งเตือนอัตโนมัติเรียบร้อย' : '🏷️ บันทึก Tag หนี้ / บิลเรียบร้อย');
       populateExpenseCategoryDropdown();
       renderDebtTags();
+      renderReminderTab();
+      renderFloatingReminders();
     }
 
     function editDebtTag(id) {
@@ -3547,23 +3736,66 @@
       const nextDate = prompt('วันที่อัปเดต (dd/mm/yyyy):', curDmy);
       if (nextDate === null) return;
       const parsedDate = parseDMYtoISO(nextDate) || tag.updatedAt || new Date().toISOString().slice(0, 10);
+      let nextDueDay = tag.dueDay ?? null;
+      let nextDueMonth = tag.dueMonth ?? null;
+      if (parsedCycle === 'monthly') {
+        const curDue = tag.dueDay ? String(tag.dueDay) : '';
+        const rawDue = prompt('กำหนดจ่ายทุกวันที่ของเดือน (1-31, เว้นว่างหากไม่แจ้งเตือน):', curDue);
+        if (rawDue === null) return;
+        const tDue = rawDue.trim();
+        if (tDue === '') {
+          nextDueDay = null;
+          nextDueMonth = null;
+        } else {
+          const nDue = Number(tDue);
+          if (isNaN(nDue) || nDue < 1 || nDue > 31) {
+            showToast('⚠️ กรุณากรอกวันที่ระหว่าง 1 ถึง 31');
+            return;
+          }
+          nextDueDay = Math.round(nDue);
+          nextDueMonth = null;
+        }
+      } else {
+        const curDM = (tag.dueDay && tag.dueMonth) ? `${String(tag.dueDay).padStart(2, '0')}/${String(tag.dueMonth).padStart(2, '0')}` : '';
+        const rawDM = prompt('กำหนดจ่ายประจำปี (วัน/เดือน เช่น 15/07, เว้นว่างหากไม่แจ้งเตือน):', curDM);
+        if (rawDM === null) return;
+        const tDM = rawDM.trim();
+        if (tDM === '') {
+          nextDueDay = null;
+          nextDueMonth = null;
+        } else {
+          const m = tDM.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
+          if (!m || Number(m[1]) < 1 || Number(m[1]) > 31 || Number(m[2]) < 1 || Number(m[2]) > 12) {
+            showToast('⚠️ กรุณากรอกเป็น วัน/เดือน เช่น 15/07');
+            return;
+          }
+          nextDueDay = Number(m[1]);
+          nextDueMonth = Number(m[2]);
+        }
+      }
       const nextReason = prompt('เหตุผลที่อัปเดต (เช่น อัปเดตให้ตรงจากดอกเบี้ย):', tag.reason || '');
       if (nextReason === null) return;
 
+      let syncedRem = false;
       updateCurrentUser(user => {
         const target = (user.debtTags || []).find(t => t.id === id);
         if (!target) return;
         target.name = nextName.trim();
         target.cycle = parsedCycle;
+        target.dueDay = nextDueDay;
+        target.dueMonth = nextDueMonth;
         target.balance = parsedBal;
         target.defaultPay = parsedPay;
         target.updatedAt = parsedDate;
         target.reason = nextReason.trim();
+        syncedRem = syncDebtTagReminder(user, target);
       });
 
-      showToast('💾 อัปเดต Tag หนี้ / บิลเรียบร้อย');
+      showToast(syncedRem ? '💾⏰ อัปเดต Tag และซิงค์แจ้งเตือนเรียบร้อย' : '💾 อัปเดต Tag หนี้ / บิลเรียบร้อย');
       populateExpenseCategoryDropdown();
       renderDebtTags();
+      renderReminderTab();
+      renderFloatingReminders();
     }
 
     function moveDebtTag(id, dir) {
@@ -3654,10 +3886,13 @@
     function deleteDebtTag(id) {
       updateCurrentUser(u => {
         u.debtTags = (u.debtTags || []).filter(t => t.id !== id);
+        u.reminders = (u.reminders || []).filter(r => r.debtTagId !== id && r.id !== 'rem_tag_' + id);
       });
       showToast('🗑️ ลบ Tag เรียบร้อยแล้ว');
       populateExpenseCategoryDropdown();
       renderDebtTags();
+      renderReminderTab();
+      renderFloatingReminders();
     }
 
     function renderDebtTags() {
@@ -3688,6 +3923,10 @@
           const defaultPayHtml = t.defaultPay !== null && t.defaultPay !== undefined && Number(t.defaultPay) > 0
             ? `<span style="color:var(--wood-dark); font-weight:600;">ยอดจ่ายประจำ: ${formatBaht(t.defaultPay)}/${isYearly ? 'ปี' : 'เดือน'}</span> • `
             : '';
+          const thaiMonthsShort = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+          const dueHtml = t.dueDay
+            ? `<span style="color:#b45309; font-weight:600;">⏰ กำหนด${isYearly && t.dueMonth ? `ทุก ${t.dueDay} ${thaiMonthsShort[Number(t.dueMonth) - 1] || ''}` : `ทุกวันที่ ${t.dueDay}`}</span> • `
+            : '';
           let paidHtml = '';
           if (paidPeriod > 0) {
             paidHtml = `• ${isYearly ? `จ่ายปีนี้ (${curYear})` : 'จ่ายเดือนนี้'}: <span class="text-income">${formatBaht(paidPeriod)}</span>`;
@@ -3707,7 +3946,7 @@
                 <div>
                   <div style="font-weight:600;"><span style="color:var(--text-muted); font-size:0.82rem;">#${idx + 1}</span> ${escapeHtml(t.name)}${cycleChip}</div>
                   <div class="tx-meta">
-                    ${defaultPayHtml}อัปเดต: ${escapeHtml(formatDateDMY(t.updatedAt || '-'))}
+                    ${defaultPayHtml}${dueHtml}อัปเดต: ${escapeHtml(formatDateDMY(t.updatedAt || '-'))}
                     ${t.reason ? `• เหตุผล: ${escapeHtml(t.reason)}` : ''}
                     ${paidHtml}
                   </div>
@@ -4200,7 +4439,7 @@
               <div class="tx-left">
                 <div class="tx-icon">${info.isPaid ? '✅' : meta.icon}</div>
                 <div>
-                  <div style="font-weight:600;">${escapeHtml(r.title)} <small style="color:var(--text-muted); font-weight:400;">(${meta.label})</small></div>
+                  <div style="font-weight:600;">${escapeHtml(r.title)} <small style="color:var(--text-muted); font-weight:400;">(${meta.label})</small>${r.debtTagId ? ' <span style="font-size:0.7rem; background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:999px; font-weight:600;">🔗 ซิงค์จาก Tag</span>' : ''}</div>
                   <div class="tx-meta">กำหนด: ${escapeHtml(info.dueLabel)} • ${info.isPaid ? `<span class="text-income">${meta.doneText}</span>` : (info.diffDays < 0 ? `<span class="text-expense">เกินกำหนด ${Math.abs(info.diffDays)} วัน</span>` : `อีก ${info.diffDays} วัน`)}</div>
                 </div>
               </div>
