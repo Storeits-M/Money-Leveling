@@ -1640,11 +1640,12 @@
     }
 
     const SAMPLE_MEMBERS = [
-      { id: 'm1', communityName: 'ต้นกล้าออมเก่ง', occupation: 'นักเรียน / นักศึกษา', age: 17, avatar: makeSvgAvatar('#d97706', '🌱'), savingsRate: 45, monthlyScore: 185, allTimeScore: 1720 },
-      { id: 'm2', communityName: 'น้ำใสสายวางแผน', occupation: 'สายไอที / โปรแกรมเมอร์', age: 27, avatar: makeSvgAvatar('#0284c7', '💻'), savingsRate: 38, monthlyScore: 160, allTimeScore: 1150 },
-      { id: 'm3', communityName: 'พีทฟรีแลนซ์', occupation: 'ฟรีแลนซ์ / อาชีพอิสระ', age: 25, avatar: makeSvgAvatar('#059669', '🎨'), savingsRate: 32, monthlyScore: 135, allTimeScore: 560 },
-      { id: 'm4', communityName: 'เจ๊เมย์ค้าขาย', occupation: 'ค้าขาย / ธุรกิจส่วนตัว', age: 33, avatar: makeSvgAvatar('#b45309', '🏪'), savingsRate: 26, monthlyScore: 110, allTimeScore: 220 },
-      { id: 'm5', communityName: 'บอสออฟฟิศ', occupation: 'พนักงานบริษัท', age: 29, avatar: makeSvgAvatar('#7c3aed', '💼'), savingsRate: 20, monthlyScore: 85, allTimeScore: 100 }
+      { id: 'm1', communityName: 'อมแล้วยิ้ม', occupation: 'ผู้นำทุ่งทานตะวันน้ำไหลเชี่ยว', age: 'เป็นเพียงตัวเลข', avatar: makeSvgAvatar('#eab308', '☀️'), savingsRate: 52, monthlyScore: 195, allTimeScore: 2450 },
+      { id: 'm2', communityName: 'พีท', occupation: 'all-rounder', age: '26', avatar: makeSvgAvatar('#059669', '☯️'), savingsRate: 44, monthlyScore: 165, allTimeScore: 1250 },
+      { id: 'm3', communityName: 'น้ำใส ไหลไม่หยุด', occupation: 'ไอที 2ทีก็ได้', age: '9999', avatar: makeSvgAvatar('#7c3aed', '🔮'), savingsRate: 36, monthlyScore: 140, allTimeScore: 580 },
+      { id: 'm4', communityName: 'เจ๊เมย์ หอยใหญ่', occupation: 'ขายหอยริมนา', age: 'ได้หมดถ้าสดพอ', avatar: makeSvgAvatar('#dc2626', '🐚'), savingsRate: 29, monthlyScore: 120, allTimeScore: 220 },
+      { id: 'm5', communityName: 'บอสตัน', occupation: 'เย็นนี้เอางานมาส่งด้วย', age: '44', avatar: makeSvgAvatar('#db2777', '🧹'), savingsRate: 22, monthlyScore: 95, allTimeScore: 110 },
+      { id: 'm6', communityName: 'น้องเอิร์น', occupation: 'เรียนไปก็เหนื่อย', age: '19.999', avatar: makeSvgAvatar('#d97706', '🐣'), savingsRate: 15, monthlyScore: 45, allTimeScore: 45 }
     ];
 
     const RO_CLASSES = [
@@ -1728,6 +1729,12 @@
         return String(user.age).trim();
       }
       return String(calcAgeFromDob(user.dob));
+    }
+
+    function formatAgeLabel(ageVal) {
+      const s = String(ageVal ?? '').trim();
+      if (!s) return 'อายุ -';
+      return /^\d+(\.\d+)?$/.test(s) ? `อายุ ${s} ปี` : `อายุ: ${s}`;
     }
 
     function calcThaiSSO(grossSalary) {
@@ -3371,7 +3378,7 @@
                 <div class="user-mini-avatar" style="flex-shrink:0;">${avatarHtml}</div>
                 <div style="min-width:0;">
                   <div style="font-weight:700; font-size:0.96rem;">${escapeHtml(entry.communityName)}${meBadge}${hideNote}</div>
-                  <div style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(entry.occupation)} • อายุ ${entry.age} ปี • อัตราออม ${entry.savingsRate}%</div>
+                  <div style="font-size:0.8rem; color:var(--text-muted);">${escapeHtml(entry.occupation)} • ${escapeHtml(formatAgeLabel(entry.age))} • อัตราออม ${entry.savingsRate}%</div>
                 </div>
               </div>
               <div style="display:flex; align-items:center; justify-content:center; flex-shrink:0;">
@@ -3418,6 +3425,18 @@
     }
 
     (function init() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('clear') === '1') {
+        localStorage.removeItem(STORAGE_USERS_KEY);
+        localStorage.removeItem(STORAGE_SESSION_KEY);
+        localStorage.removeItem(STORAGE_AI_KEY);
+        localStorage.removeItem(STORAGE_REM_COLLAPSED_KEY);
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        showToast('🗑️ ลบข้อมูลที่เก็บในเครื่องนี้เรียบร้อยแล้ว');
+      }
+
       if (fbAuth && fbDb) {
         fbAuth.onAuthStateChanged(async (user) => {
           if (user) {
