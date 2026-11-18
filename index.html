@@ -1272,7 +1272,12 @@
         <div id="tx-sub-expense" class="hidden">
           <div class="two-col">
             <div class="rpg-panel">
-              <div class="wood-pill-title">💸 รายจ่าย / จ่ายบิล</div>
+              <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px;">
+                <div class="wood-pill-title" style="margin-bottom:0;">💸 รายจ่าย / จ่ายบิล</div>
+                <button type="button" onclick="switchTxSubtab('debts')" style="border:1.5px solid #f59e0b; background:#fef3c7; color:#78350f; border-radius:999px; padding:4px 10px; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:inherit;">
+                  🏷️ ต้องไปกำหนด Tags รายจ่ายก่อน
+                </button>
+              </div>
               <form onsubmit="handleAddExpense(event)">
                 <div class="form-grid">
                   <div class="form-group">
@@ -1410,7 +1415,7 @@
                 <div class="form-grid">
                   <div class="form-group full">
                     <label for="debt-tag-name">ชื่อหัวข้อ / Tag (พิมพ์เองได้เลย) *</label>
-                    <input type="text" id="debt-tag-name" placeholder="เช่น หนี้บัตรเครดิต KTC, ค่างวดรถ Suzuki Swift, ค่าไฟ, ค่าเน็ต" required />
+                    <input type="text" id="debt-tag-name" placeholder="เช่น บัตรเครดิต, ค่างวดรถ, ค่าไฟ, ค่าเน็ต" required />
                   </div>
                   <div class="form-group">
                     <label for="debt-tag-balance">ยอดหนี้คงเหลือปัจจุบัน (ไม่บังคับ)</label>
@@ -2714,18 +2719,6 @@
         `).join('');
     }
 
-    const DEFAULT_EXPENSE_CATEGORIES = [
-      { value: 'ค่ากิน / อาหารและเครื่องดื่ม', label: '🍜 ค่ากิน / อาหารและเครื่องดื่ม' },
-      { value: 'ค่าเดินทาง', label: '🚌 ค่าเดินทาง' },
-      { value: 'ช้อปปิ้ง / บันเทิง', label: '🛍️ ช้อปปิ้ง / บันเทิง' },
-      { value: 'ค่าที่พัก / ค่าเช่า / ผ่อนบ้าน', label: '🏠 ค่าที่พัก / ค่าเช่า / ผ่อนบ้าน' },
-      { value: 'ค่าน้ำ / ค่าไฟ', label: '💡 ค่าน้ำ / ค่าไฟ' },
-      { value: 'ค่าเน็ต / ค่าโทรศัพท์มือถือ', label: '📱 ค่าเน็ต / ค่าโทรศัพท์มือถือ' },
-      { value: 'ชำระหนี้ / บัตรเครดิต', label: '💳 ชำระหนี้ / บัตรเครดิต' },
-      { value: 'ค่าเบี้ยประกันชีวิต', label: '🛡️ ค่าเบี้ยประกันชีวิต' },
-      { value: 'ค่าเทอม / ค่าเรียน', label: '🎓 ค่าเทอม / ค่าเรียน' }
-    ];
-
     function toggleCustomExpenseCategory() {
       const sel = document.getElementById('exp-category');
       const wrap = document.getElementById('exp-custom-cat-wrap');
@@ -2742,19 +2735,13 @@
 
       let html = '';
       if (tags.length > 0) {
-        html += '<optgroup label="🏷️ Tag หนี้สิน &amp; บิลประจำของคุณ">';
         html += tags.map(t => {
           const balText = t.balance !== null && t.balance !== undefined
             ? ` (คงเหลือ ${formatBaht(t.balance)})`
             : '';
           return `<option value="tag:${t.id}">🏷️ ${escapeHtml(t.name)}${balText}</option>`;
         }).join('');
-        html += '</optgroup>';
       }
-
-      html += '<optgroup label="📦 หมวดหมู่ทั่วไป">';
-      html += DEFAULT_EXPENSE_CATEGORIES.map(c => `<option value="${escapeHtml(c.value)}">${c.label}</option>`).join('');
-      html += '</optgroup>';
       html += '<option value="อื่นๆ">📦 อื่นๆ (พิมพ์ระบุเอง)</option>';
 
       sel.innerHTML = html;
