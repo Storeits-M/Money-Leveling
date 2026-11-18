@@ -615,6 +615,41 @@
       flex-shrink: 0;
     }
 
+    .ddmmyyyy-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+    .ddmmyyyy-wrap .ddmmyyyy-text {
+      width: 100%;
+      padding-right: 36px;
+    }
+    .ddmmyyyy-cal-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1.05rem;
+      line-height: 1;
+      padding: 4px;
+      opacity: 0.78;
+    }
+    .ddmmyyyy-cal-btn:hover { opacity: 1; }
+    .ddmmyyyy-native {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      width: 24px;
+      height: 24px;
+      transform: translateY(-50%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
     .nav-tab {
       font-family: inherit;
       font-size: 0.94rem;
@@ -1658,7 +1693,10 @@
                   <input type="date" id="rem-date" />
                 </div>
               </div>
-              <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 14px;">💾 บันทึกการแจ้งเตือน</button>
+              <div style="display:flex; gap:8px; margin-top: 14px;">
+                <button type="submit" id="rem-submit-btn" class="btn btn-primary" style="flex:1;">💾 บันทึกการแจ้งเตือน</button>
+                <button type="button" id="rem-cancel-edit-btn" class="btn btn-secondary hidden" onclick="cancelEditReminder()">ยกเลิกแก้ไข</button>
+              </div>
             </form>
             <div class="info-callout" style="margin-top: 14px; margin-bottom: 0;">
               💡 รายการที่ยังไม่ทำจะแสดงใน <strong>ป้ายลอยด้านขวาบน</strong> โดยจะเปลี่ยนเป็นสีแดงอัตโนมัติเมื่อเหลือเวลา ≤ 3 วัน และเมื่อติ๊ก "ทำแล้ว/จ่ายแล้ว" ป้ายจะซ่อนให้ทันทีในรอบนั้น (ใช้สำหรับแจ้งเตือนอย่างเดียว ไม่คิดคะแนน Ranking)
@@ -2558,7 +2596,129 @@
       showToast('👋 ออกจากระบบเรียบร้อย');
     }
 
+    function formatDateDMY(val) {
+      if (!val || typeof val !== 'string') return val || '-';
+      const m = val.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+      return val;
+    }
+
+    function parseDMYtoISO(val) {
+      if (!val || typeof val !== 'string') return null;
+      const s = val.trim();
+      const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (isoMatch) return s;
+      const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!dmyMatch) return null;
+      const dd = Number(dmyMatch[1]);
+      const mm = Number(dmyMatch[2]);
+      const yyyy = Number(dmyMatch[3]);
+      if (mm < 1 || mm > 12 || dd < 1 || dd > 31 || yyyy < 1900 || yyyy > 2199) return null;
+      const dt = new Date(yyyy, mm - 1, dd);
+      if (dt.getFullYear() !== yyyy || dt.getMonth() !== mm - 1 || dt.getDate() !== dd) return null;
+      return `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+    }
+
+    function initDdmmyyyyInputs() {
+      const nativeDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+      document.querySelectorAll('input[type="date"]').forEach(el => {
+        if (el.dataset.dmyReady === '1') return;
+        el.dataset.dmyReady = '1';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'ddmmyyyy-wrap';
+        if (el.style.width) wrap.style.width = el.style.width;
+        if (el.classList.contains('hidden')) wrap.classList.add('hidden');
+
+        const textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.className = 'ddmmyyyy-text';
+        textInput.placeholder = 'dd/mm/yyyy';
+        textInput.maxLength = 10;
+        textInput.inputMode = 'numeric';
+        if (el.required) textInput.required = true;
+
+        const calBtn = document.createElement('button');
+        calBtn.type = 'button';
+        calBtn.className = 'ddmmyyyy-cal-btn';
+        calBtn.title = 'เลือกจากปฏิทิน';
+        calBtn.textContent = '📅';
+
+        el.parentNode.insertBefore(wrap, el);
+        el.classList.add('ddmmyyyy-native');
+        wrap.appendChild(textInput);
+        wrap.appendChild(calBtn);
+        wrap.appendChild(el);
+
+        const syncDisplay = () => {
+          const iso = nativeDesc.get.call(el);
+          textInput.value = iso ? formatDateDMY(iso) : '';
+        };
+        syncDisplay();
+
+        Object.defineProperty(el, 'value', {
+          configurable: true,
+          get() { return nativeDesc.get.call(el); },
+          set(v) {
+            nativeDesc.set.call(el, v);
+            syncDisplay();
+          }
+        });
+
+        const obs = new MutationObserver(() => {
+          wrap.classList.toggle('hidden', el.classList.contains('hidden'));
+        });
+        obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+
+        el.addEventListener('change', syncDisplay);
+
+        calBtn.addEventListener('click', () => {
+          if (typeof el.showPicker === 'function') {
+            try { el.showPicker(); return; } catch (_) {}
+          }
+          el.focus();
+          el.click();
+        });
+
+        textInput.addEventListener('input', () => {
+          const digits = textInput.value.replace(/\D/g, '').slice(0, 8);
+          if (digits.length >= 5) {
+            textInput.value = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+          } else if (digits.length >= 3) {
+            textInput.value = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+          }
+          const iso = parseDMYtoISO(textInput.value);
+          if (iso) {
+            nativeDesc.set.call(el, iso);
+            textInput.setCustomValidity('');
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+
+        textInput.addEventListener('blur', () => {
+          if (!textInput.value.trim()) {
+            if (!el.required) {
+              nativeDesc.set.call(el, '');
+              textInput.setCustomValidity('');
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            return;
+          }
+          const iso = parseDMYtoISO(textInput.value);
+          if (iso) {
+            nativeDesc.set.call(el, iso);
+            textInput.value = formatDateDMY(iso);
+            textInput.setCustomValidity('');
+          } else {
+            textInput.setCustomValidity('กรุณากรอกวันที่ในรูปแบบ dd/mm/yyyy ให้ถูกต้อง');
+            syncDisplay();
+          }
+        });
+      });
+    }
+
     function enterDashboard() {
+      initDdmmyyyyInputs();
       const user = getCurrentUser();
       if (!user) return;
       document.getElementById('auth-view').classList.add('hidden');
@@ -2867,7 +3027,7 @@
               <div class="tx-icon">🪙</div>
               <div>
                 <div style="font-weight:500;">${escapeHtml(i.source)} ${i.note ? `— ${escapeHtml(i.note)}` : ''}</div>
-                <div class="tx-meta">${escapeHtml(i.date)} ${i.sso > 0 ? `• หัก ปกส. ${formatBaht(i.sso)}` : ''} ${i.wht > 0 ? `• หัก ณ ที่จ่าย ${formatBaht(i.wht)}` : ''}</div>
+                <div class="tx-meta">${escapeHtml(formatDateDMY(i.date))} ${i.sso > 0 ? `• หัก ปกส. ${formatBaht(i.sso)}` : ''} ${i.wht > 0 ? `• หัก ณ ที่จ่าย ${formatBaht(i.wht)}` : ''}</div>
               </div>
             </div>
             <div class="tx-right">
@@ -3087,7 +3247,7 @@
               <div class="tx-icon">💸</div>
               <div>
                 <div style="font-weight:500;">${escapeHtml(e.note || e.category)}</div>
-                <div class="tx-meta">${escapeHtml(e.date)} • ${escapeHtml(e.category)}</div>
+                <div class="tx-meta">${escapeHtml(formatDateDMY(e.date))} • ${escapeHtml(e.category)}</div>
               </div>
             </div>
             <div class="tx-right">
@@ -3174,7 +3334,7 @@
               <div class="tx-icon">🏦</div>
               <div>
                 <div style="font-weight:600;">${escapeHtml(v.name)} <small style="color:var(--text-muted);">(${escapeHtml(v.type)})</small></div>
-                <div class="tx-meta">${v.desc ? escapeHtml(v.desc) : 'ไม่มีหมายเหตุ'} • อัปเดต ${escapeHtml(v.updatedAt || '-')}</div>
+                <div class="tx-meta">${v.desc ? escapeHtml(v.desc) : 'ไม่มีหมายเหตุ'} • อัปเดต ${escapeHtml(formatDateDMY(v.updatedAt || '-'))}</div>
               </div>
             </div>
             <div class="tx-right">
@@ -3255,8 +3415,10 @@
       if (nextPayStr === null) return;
       const trimmedPay = nextPayStr.trim();
       if (trimmedPay !== '' && (isNaN(Number(trimmedPay)) || Number(trimmedPay) < 0)) return;
-      const nextDate = prompt('วันที่อัปเดต (YYYY-MM-DD):', tag.updatedAt || new Date().toISOString().slice(0, 10));
+      const curDmy = formatDateDMY(tag.updatedAt || new Date().toISOString().slice(0, 10));
+      const nextDate = prompt('วันที่อัปเดต (dd/mm/yyyy):', curDmy);
       if (nextDate === null) return;
+      const parsedDate = parseDMYtoISO(nextDate) || tag.updatedAt || new Date().toISOString().slice(0, 10);
       const nextReason = prompt('เหตุผลที่อัปเดต (เช่น อัปเดตให้ตรงจากดอกเบี้ย):', tag.reason || '');
       if (nextReason === null) return;
 
@@ -3266,7 +3428,7 @@
         target.name = nextName.trim();
         target.balance = trimmedBal === '' ? null : Number(trimmedBal);
         target.defaultPay = trimmedPay === '' ? null : Number(trimmedPay);
-        target.updatedAt = nextDate.trim() || new Date().toISOString().slice(0, 10);
+        target.updatedAt = parsedDate;
         target.reason = nextReason.trim();
       });
 
@@ -3335,6 +3497,31 @@
       e.currentTarget.style.borderColor = '';
     }
 
+    function addDebtTagCharge(id) {
+      const u = getCurrentUser();
+      const tag = (u.debtTags || []).find(t => t.id === id);
+      if (!tag) return;
+      const curBal = Number(tag.balance || 0);
+      const rawAdd = prompt(`ใช้จ่ายเพิ่ม / รูดเพิ่มสำหรับ "${tag.name}" (ยอดเดิม ${formatBaht(curBal)})\nกรอกจำนวนเงินที่ต้องการบวกเพิ่ม (บาท):`, '');
+      if (rawAdd === null) return;
+      const addAmt = Number(rawAdd.trim());
+      if (!rawAdd.trim() || isNaN(addAmt) || addAmt <= 0) {
+        showToast('⚠️ กรุณากรอกจำนวนเงินที่มากกว่า 0');
+        return;
+      }
+      const nextBal = curBal + addAmt;
+      updateCurrentUser(user => {
+        const target = (user.debtTags || []).find(t => t.id === id);
+        if (!target) return;
+        target.balance = nextBal;
+        target.updatedAt = new Date().toISOString().slice(0, 10);
+        target.reason = `ใช้จ่ายเพิ่ม (+${formatBaht(addAmt)})`;
+      });
+      showToast(`💳 บวกเพิ่ม ${formatBaht(addAmt)} แล้ว (รวม ${formatBaht(nextBal)})`);
+      populateExpenseCategoryDropdown();
+      renderDebtTags();
+    }
+
     function deleteDebtTag(id) {
       updateCurrentUser(u => {
         u.debtTags = (u.debtTags || []).filter(t => t.id !== id);
@@ -3376,7 +3563,7 @@
                 <div>
                   <div style="font-weight:600;"><span style="color:var(--text-muted); font-size:0.82rem;">#${idx + 1}</span> ${escapeHtml(t.name)}</div>
                   <div class="tx-meta">
-                    ${defaultPayHtml}อัปเดต: ${escapeHtml(t.updatedAt || '-')}
+                    ${defaultPayHtml}อัปเดต: ${escapeHtml(formatDateDMY(t.updatedAt || '-'))}
                     ${t.reason ? `• เหตุผล: ${escapeHtml(t.reason)}` : ''}
                     ${paidFromLogs > 0 ? `• จ่ายแล้วจาก Log: <span class="text-income">${formatBaht(paidFromLogs)}</span>` : ''}
                   </div>
@@ -3384,6 +3571,7 @@
               </div>
               <div class="tx-right">
                 ${balHtml}
+                <button type="button" class="btn btn-primary btn-sm" onclick="addDebtTagCharge('${t.id}')" title="บวกยอดหนี้/รูดใช้เพิ่มเข้ายอดเดิมโดยตรง (ไม่สร้าง Log เพิ่ม)">+ ใช้จ่ายเพิ่ม</button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="editDebtTag('${t.id}')">แก้ไข</button>
                 <button type="button" class="btn btn-danger" onclick="deleteDebtTag('${t.id}')">ลบ</button>
               </div>
@@ -3632,6 +3820,39 @@
       return REMINDER_CATEGORIES[cat] || REMINDER_CATEGORIES.pay;
     }
 
+    let editingReminderId = null;
+
+    function editReminder(id) {
+      const u = getCurrentUser();
+      const r = (u && u.reminders || []).find(x => x.id === id);
+      if (!r) return;
+      editingReminderId = id;
+      document.getElementById('rem-category').value = r.category || 'pay';
+      document.getElementById('rem-title').value = r.title || '';
+      document.getElementById('rem-amount').value = r.amount || '';
+      document.getElementById('rem-mode').value = r.mode || 'monthly';
+      if (r.day) document.getElementById('rem-day').value = r.day;
+      if (r.yearlyDay) document.getElementById('rem-yearly-day').value = r.yearlyDay;
+      if (r.yearlyMonth) document.getElementById('rem-yearly-month').value = r.yearlyMonth;
+      if (r.date) document.getElementById('rem-date').value = r.date;
+      toggleReminderMode();
+      const subBtn = document.getElementById('rem-submit-btn');
+      const cancelBtn = document.getElementById('rem-cancel-edit-btn');
+      if (subBtn) subBtn.textContent = '💾 บันทึกการแก้ไข';
+      if (cancelBtn) cancelBtn.classList.remove('hidden');
+      document.getElementById('rem-title').focus();
+    }
+
+    function cancelEditReminder() {
+      editingReminderId = null;
+      document.getElementById('rem-title').value = '';
+      document.getElementById('rem-amount').value = '';
+      const subBtn = document.getElementById('rem-submit-btn');
+      const cancelBtn = document.getElementById('rem-cancel-edit-btn');
+      if (subBtn) subBtn.textContent = '💾 บันทึกการแจ้งเตือน';
+      if (cancelBtn) cancelBtn.classList.add('hidden');
+    }
+
     function handleAddReminder(e) {
       e.preventDefault();
       const category = document.getElementById('rem-category').value || 'pay';
@@ -3652,8 +3873,23 @@
         return;
       }
 
+      const isEditing = Boolean(editingReminderId);
       updateCurrentUser(u => {
         u.reminders = u.reminders || [];
+        if (editingReminderId) {
+          const target = u.reminders.find(r => r.id === editingReminderId);
+          if (target) {
+            target.category = category;
+            target.title = title;
+            target.amount = amount;
+            target.mode = mode;
+            target.day = day;
+            target.yearlyDay = yearlyDay;
+            target.yearlyMonth = yearlyMonth;
+            target.date = date;
+            return;
+          }
+        }
         u.reminders.push({
           id: 'rem_' + Date.now(),
           category, title, amount, mode, day, yearlyDay, yearlyMonth, date,
@@ -3661,9 +3897,8 @@
         });
       });
 
-      document.getElementById('rem-title').value = '';
-      document.getElementById('rem-amount').value = '';
-      showToast('⏰ บันทึกการแจ้งเตือนเรียบร้อย');
+      cancelEditReminder();
+      showToast(isEditing ? '💾 แก้ไขรายการแจ้งเตือนเรียบร้อย' : '⏰ บันทึกการแจ้งเตือนเรียบร้อย');
       renderReminderTab();
       renderFloatingReminders();
     }
@@ -3774,7 +4009,7 @@
         const isPaid = paidList.includes('once_done');
         return {
           cycleKey: 'once_done',
-          dueLabel: rem.date,
+          dueLabel: formatDateDMY(rem.date),
           diffDays,
           isPaid,
           isNextMonthPreview: false,
@@ -3828,6 +4063,7 @@
               <div class="tx-right">
                 <strong class="${meta.amtClass}">${formatBaht(r.amount)}</strong>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="markReminderPaid('${r.id}', '${info.cycleKey}')">${info.isPaid ? meta.undoneBtn : meta.doneBtn}</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="editReminder('${r.id}')">แก้ไข</button>
                 <button type="button" class="btn btn-danger" onclick="deleteReminder('${r.id}')">ลบ</button>
               </div>
             </div>
