@@ -1386,8 +1386,8 @@
                   </div>
                   <div class="form-group full">
                     <label for="inc-source">แหล่งที่มาของรายได้ *</label>
-                    <select id="inc-source" onchange="previewIncomeSSO()">
-                      <option value="เงินเดือน">💼 เงินเดือน (หักประกันสังคมอัตโนมัติตามเรตไทย)</option>
+                    <select id="inc-source" onchange="previewIncomeSSO(false, true)">
+                      <option value="เงินเดือน">💼 เงินเดือน (คำนวณ ปกส. ออโต้ / แก้ไขเป็น 0 ได้)</option>
                       <option value="ฟรีแลนซ์">🎨 ฟรีแลนซ์ / งานจ๊อบ</option>
                       <option value="โบนัส">🎁 โบนัส</option>
                       <option value="ขายของ">🏪 ขายของ / ค้าขาย</option>
@@ -1400,10 +1400,14 @@
                     <input type="text" id="inc-custom-source" placeholder="เช่น ค่าขนม, รางวัล, เงินคืน" />
                   </div>
                   <div class="form-group">
+                    <label for="inc-sso">ประกันสังคม (บาท) (Auto / ใส่ 0 ได้)</label>
+                    <input type="number" id="inc-sso" min="0" step="0.01" value="0" placeholder="0" oninput="previewIncomeSSO(true)" />
+                  </div>
+                  <div class="form-group">
                     <label for="inc-wht">ภาษีหัก ณ ที่จ่าย (บาท, ถ้ามี)</label>
                     <input type="number" id="inc-wht" min="0" step="0.01" value="0" placeholder="0" />
                   </div>
-                  <div class="form-group">
+                  <div class="form-group full">
                     <label for="inc-note">รายละเอียดเพิ่มเติม</label>
                     <input type="text" id="inc-note" placeholder="เช่น เดือน พ.ย., งานออกแบบ" />
                   </div>
@@ -3084,16 +3088,29 @@
       renderDebtTags();
     }
 
-    function previewIncomeSSO() {
+    function previewIncomeSSO(isManualSsoEdit, sourceChanged) {
       const source = document.getElementById('inc-source').value;
       const amount = Number(document.getElementById('inc-amount').value || 0);
+      const ssoEl = document.getElementById('inc-sso');
       document.getElementById('inc-custom-source-wrap').classList.toggle('hidden', source !== 'อื่นๆ');
+      if (ssoEl) {
+        if (sourceChanged === true) {
+          ssoEl.dataset.manual = '';
+        }
+        if (isManualSsoEdit === true) {
+          ssoEl.dataset.manual = '1';
+        } else if (ssoEl.dataset.manual !== '1') {
+          ssoEl.value = (source === 'เงินเดือน' && amount > 0) ? calcThaiSSO(amount) : 0;
+        }
+      }
+      const ssoVal = Math.max(0, Number(ssoEl ? ssoEl.value : (source === 'เงินเดือน' ? calcThaiSSO(amount) : 0)) || 0);
       const box = document.getElementById('inc-sso-preview');
-      if (source === 'เงินเดือน' && amount > 0) {
-        const sso = calcThaiSSO(amount);
-        const net = Math.max(0, amount - sso);
+      if (amount > 0 && (source === 'เงินเดือน' || ssoVal > 0)) {
+        const net = Math.max(0, amount - ssoVal);
         box.classList.remove('hidden');
-        box.innerHTML = `หักประกันสังคม ม.33 อัตโนมัติ (5% เพดาน 17,500 บ.): <strong>-${formatBaht(sso)}</strong> → รับสุทธิ <strong class="text-income">${formatBaht(net)}</strong>`;
+        box.innerHTML = ssoVal > 0
+          ? `หักประกันสังคม: <strong>-${formatBaht(ssoVal)}</strong> → รับสุทธิ <strong class="text-income">${formatBaht(net)}</strong>`
+          : `ไม่หักประกันสังคม (฿0) → รับสุทธิ <strong class="text-income">${formatBaht(net)}</strong>`;
       } else {
         box.classList.add('hidden');
       }
@@ -3114,7 +3131,10 @@
         showToast('⚠️ กรุณาใช้ข้อความที่สุภาพ (ไม่อนุญาตคำหยาบหรือคำลามกตรงๆ)');
         return;
       }
-      const sso = source === 'เงินเดือน' ? calcThaiSSO(amount) : 0;
+      const ssoEl = document.getElementById('inc-sso');
+      const sso = ssoEl
+        ? Math.min(amount, Math.max(0, Number(ssoEl.value || 0)))
+        : (source === 'เงินเดือน' ? calcThaiSSO(amount) : 0);
       const netAmount = Math.max(0, amount - sso);
 
       updateCurrentUser(u => {
@@ -3124,10 +3144,11 @@
       });
 
       document.getElementById('inc-amount').value = '';
+      if (ssoEl) { ssoEl.value = '0'; ssoEl.dataset.manual = ''; }
       document.getElementById('inc-wht').value = '0';
       document.getElementById('inc-note').value = '';
       document.getElementById('inc-custom-source').value = '';
-      previewIncomeSSO();
+      previewIncomeSSO(false);
       showToast('🪙 บันทึกรายได้เรียบร้อย');
       renderIncomeLog();
     }
@@ -3150,12 +3171,20 @@
         showToast('⚠️ กรุณากรอกจำนวนเงินที่ถูกต้อง (มากกว่า 0)');
         return;
       }
+      const defaultSso = item.sso !== undefined ? item.sso : (item.source === 'เงินเดือน' ? calcThaiSSO(parsedAmt) : 0);
+      const nextSsoRaw = prompt(`แก้ไขยอดประกันสังคม (บาท, ใส่ 0 ได้ถ้าไม่หัก):`, defaultSso);
+      if (nextSsoRaw === null) return;
+      const parsedSso = nextSsoRaw.trim() === '' ? 0 : parseMoneyInput(nextSsoRaw);
+      if (isNaN(parsedSso) || parsedSso < 0) {
+        showToast('⚠️ กรุณากรอกยอดประกันสังคมที่ถูกต้อง (0 ขึ้นไป)');
+        return;
+      }
       const nextNote = prompt('แก้ไขรายละเอียดเพิ่มเติม:', item.note || '');
       updateCurrentUser(user => {
         const target = user.incomes.find(x => x.id === id);
         if (!target) return;
         target.amount = parsedAmt;
-        target.sso = target.source === 'เงินเดือน' ? calcThaiSSO(target.amount) : 0;
+        target.sso = Math.min(parsedAmt, parsedSso);
         target.netAmount = Math.max(0, target.amount - target.sso);
         if (nextNote !== null) target.note = nextNote.trim();
       });
