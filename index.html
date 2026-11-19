@@ -3999,24 +3999,22 @@
       renderFloatingReminders();
     }
 
-    function getRockmanHpMeta(remPct, isCleared) {
-      if (isCleared || remPct <= 0) {
-        return { cls: '', icon: '🏆', color: '#0e7490', label: 'ปลดหนี้แล้ว' };
+    function getRockmanHpMeta(paidPct) {
+      const p = Number(paidPct || 0);
+      if (p >= 70) {
+        return { cls: 'hp-green', icon: '🟩', color: '#15803d', label: 'ใกล้ปลดหนี้' };
       }
-      if (remPct >= 70) {
-        return { cls: 'hp-green', icon: '🟩', color: '#15803d', label: 'คงเหลือ' };
+      if (p >= 30) {
+        return { cls: 'hp-orange', icon: '🟧', color: '#c2410c', label: 'กำลังลดหนี้' };
       }
-      if (remPct >= 30) {
-        return { cls: 'hp-orange', icon: '🟧', color: '#c2410c', label: 'คงเหลือ' };
-      }
-      return { cls: 'hp-red', icon: '🟥', color: '#b91c1c', label: 'ใกล้หมดหลอด' };
+      return { cls: 'hp-red', icon: '🟥', color: '#b91c1c', label: 'หนี้ยังเยอะ' };
     }
 
-    function buildRockmanSegmentsHtml(remPct, isCleared) {
-      const pct = isCleared ? 0 : Math.max(0, Math.min(100, Number(remPct || 0)));
+    function buildRockmanSegmentsHtml(paidPct) {
+      const pct = Math.max(0, Math.min(100, Number(paidPct || 0)));
       let filled = Math.round((pct / 100) * 20);
-      if (!isCleared && pct > 0 && filled === 0) filled = 1;
-      const meta = getRockmanHpMeta(pct, isCleared);
+      if (pct > 0 && filled === 0) filled = 1;
+      const meta = getRockmanHpMeta(pct);
       let html = '';
       for (let i = 0; i < 20; i++) {
         const cls = i < filled ? `rmx-seg ${meta.cls}` : 'rmx-seg';
@@ -4094,8 +4092,8 @@
         const cycleBadge = isYearly
           ? '<span style="font-size:0.72rem; color:#7c3aed; background:#f3e8ff; padding:2px 8px; border-radius:999px; font-weight:600;">🗓️ รายปี</span>'
           : '<span style="font-size:0.72rem; color:#0369a1; background:#e0f2fe; padding:2px 8px; border-radius:999px; font-weight:600;">🔄 รายเดือน</span>';
-        const hpMeta = getRockmanHpMeta(remPct, false);
-        const statusBadge = `<span style="font-size:0.75rem; color:${hpMeta.color}; background:#fff7ed; border:1px solid ${hpMeta.color}33; padding:2px 9px; border-radius:999px; font-weight:700;">เหลือ ${remPct.toFixed(1)}%</span>`;
+        const hpMeta = getRockmanHpMeta(paidPct);
+        const statusBadge = `<span style="font-size:0.75rem; color:${hpMeta.color}; background:#fff7ed; border:1px solid ${hpMeta.color}33; padding:2px 9px; border-radius:999px; font-weight:700;">ชำระแล้ว ${paidPct.toFixed(1)}%</span>`;
 
         const recentLogsHtml = validLogs.length === 0
           ? '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">ยังไม่มีรายการชำระหลังจากวันที่อัปเดตล่าสุด</div>'
@@ -4116,12 +4114,12 @@
               </div>
               ${statusBadge}
             </div>
-            <div class="rmx-bar-outer" title="หนี้คงเหลือ ${remPct.toFixed(1)}% | ชำระแล้ว ${paidPct.toFixed(1)}%">
-              ${buildRockmanSegmentsHtml(remPct, false)}
+            <div class="rmx-bar-outer" title="ชำระแล้ว ${paidPct.toFixed(1)}% | หนี้คงเหลือ ${remPct.toFixed(1)}%">
+              ${buildRockmanSegmentsHtml(paidPct)}
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; font-size:0.86rem;">
-              <span style="color:${hpMeta.color}; font-weight:700;">${hpMeta.icon} หนี้คงเหลือ: ${formatBaht(remaining)} (${remPct.toFixed(1)}%)</span>
-              <span style="color:var(--text-muted); font-weight:700;">⬜ ชำระแล้ว: ${formatBaht(paidDisplay)} (${paidPct.toFixed(1)}%)</span>
+              <span style="color:${hpMeta.color}; font-weight:700;">${hpMeta.icon} ชำระแล้ว: ${formatBaht(paidDisplay)} (${paidPct.toFixed(1)}%)</span>
+              <span style="color:var(--text-muted); font-weight:700;">⬜ หนี้คงเหลือ: ${formatBaht(remaining)} (${remPct.toFixed(1)}%)</span>
             </div>
             ${recentLogsHtml}
           </div>
@@ -4131,26 +4129,26 @@
       if (activeCards.length === 0) {
         summaryEl.innerHTML = `
           <div class="rmx-bar-outer" style="height:34px; margin-bottom:10px;">
-            ${buildRockmanSegmentsHtml(0, true)}
+            ${buildRockmanSegmentsHtml(100)}
           </div>
-          <div style="font-size:0.95rem; color:#0e7490; font-weight:700;">
-            🏆 ยินดีด้วย! คุณชำระหนี้ครบทุกก้อนแล้ว (หนี้คงเหลือทั้งหมด ฿0)
+          <div style="font-size:0.95rem; color:#15803d; font-weight:700;">
+            🏆 ยินดีด้วย! เลือดเต็มหลอด 100% — คุณไร้หนี้ครบทุกก้อนแล้ว (คงเหลือ ฿0)
           </div>
         `;
         listEl.innerHTML = '';
       } else {
         const grandPaidPct = grandGoal > 0 ? Math.min(100, (grandPaid / grandGoal) * 100) : 0;
         const grandRemPct = Math.max(0, 100 - grandPaidPct);
-        const grandMeta = getRockmanHpMeta(grandRemPct, false);
+        const grandMeta = getRockmanHpMeta(grandPaidPct);
 
         summaryEl.innerHTML = `
           <div class="rmx-bar-outer" style="height:34px; margin-bottom:10px;">
-            ${buildRockmanSegmentsHtml(grandRemPct, false)}
+            ${buildRockmanSegmentsHtml(grandPaidPct)}
           </div>
           <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; font-size:0.9rem;">
             <span>หนี้ที่กำลังผ่อน: <strong>${activeCards.length} รายการ</strong> (ตั้งต้น ${formatBaht(grandGoal)})</span>
-            <span style="color:${grandMeta.color}; font-weight:700;">${grandMeta.icon} หนี้คงเหลือรวม: ${formatBaht(grandRemaining)} (${grandRemPct.toFixed(1)}%)</span>
-            <span style="color:var(--text-muted); font-weight:700;">⬜ ชำระแล้วรวม: ${formatBaht(grandPaid)} (${grandPaidPct.toFixed(1)}%)</span>
+            <span style="color:${grandMeta.color}; font-weight:700;">${grandMeta.icon} ชำระแล้วรวม: ${formatBaht(grandPaid)} (${grandPaidPct.toFixed(1)}%)</span>
+            <span style="color:var(--text-muted); font-weight:700;">⬜ หนี้คงเหลือรวม: ${formatBaht(grandRemaining)} (${grandRemPct.toFixed(1)}%)</span>
           </div>
         `;
         listEl.innerHTML = activeCards.join('');
