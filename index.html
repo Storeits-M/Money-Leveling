@@ -3179,10 +3179,18 @@
         showToast('⚠️ กรุณากรอกยอดประกันสังคมที่ถูกต้อง (0 ขึ้นไป)');
         return;
       }
+      const nextDateRaw = prompt('แก้ไขวันที่รับเงิน (dd/mm/yyyy):', formatDateDMY(item.date || new Date().toISOString().slice(0, 10)));
+      if (nextDateRaw === null) return;
+      const parsedDate = parseDMYtoISO(nextDateRaw);
+      if (!parsedDate) {
+        showToast('⚠️ กรุณากรอกวันที่ในรูปแบบ dd/mm/yyyy เช่น 19/11/2026');
+        return;
+      }
       const nextNote = prompt('แก้ไขรายละเอียดเพิ่มเติม:', item.note || '');
       updateCurrentUser(user => {
         const target = user.incomes.find(x => x.id === id);
         if (!target) return;
+        target.date = parsedDate;
         target.amount = parsedAmt;
         target.sso = Math.min(parsedAmt, parsedSso);
         target.netAmount = Math.max(0, target.amount - target.sso);
@@ -3456,10 +3464,18 @@
         showToast('⚠️ กรุณากรอกจำนวนเงินที่ถูกต้อง (มากกว่า 0)');
         return;
       }
+      const nextDateRaw = prompt('แก้ไขวันที่จ่าย (dd/mm/yyyy):', formatDateDMY(item.date || new Date().toISOString().slice(0, 10)));
+      if (nextDateRaw === null) return;
+      const parsedDate = parseDMYtoISO(nextDateRaw);
+      if (!parsedDate) {
+        showToast('⚠️ กรุณากรอกวันที่ในรูปแบบ dd/mm/yyyy เช่น 19/11/2026');
+        return;
+      }
       const nextNote = prompt('แก้ไขรายละเอียดเพิ่มเติม:', item.note || '');
       updateCurrentUser(user => {
         const target = user.expenses.find(x => x.id === id);
         if (!target) return;
+        target.date = parsedDate;
         const oldAmt = Number(target.amount || 0);
         if (target.debtTagId) {
           const tag = (user.debtTags || []).find(t => t.id === target.debtTagId);
