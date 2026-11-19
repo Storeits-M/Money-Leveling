@@ -589,10 +589,21 @@
       border: 1px solid rgba(255, 255, 255, 0.09);
       transition: transform 0.2s ease, background 0.25s ease;
     }
-    .rmx-seg.paid {
+    .rmx-seg.paid,
+    .rmx-seg.hp-green {
       background: linear-gradient(180deg, #fef08a 0%, #4ade80 28%, #16a34a 75%, #14532d 100%);
       border-color: #86efac;
       box-shadow: 0 0 8px rgba(34, 197, 94, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+    .rmx-seg.hp-orange {
+      background: linear-gradient(180deg, #fef08a 0%, #fb923c 30%, #ea580c 78%, #9a3412 100%);
+      border-color: #fdba74;
+      box-shadow: 0 0 8px rgba(249, 115, 22, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+    .rmx-seg.hp-red {
+      background: linear-gradient(180deg, #fecaca 0%, #f87171 28%, #dc2626 75%, #7f1d1d 100%);
+      border-color: #fca5a5;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.65);
     }
     .rmx-seg.paid.cleared {
       background: linear-gradient(180deg, #ffffff 0%, #67e8f9 30%, #06b6d4 75%, #0e7490 100%);
@@ -1139,7 +1150,7 @@
           ⏰ แจ้งเตือนการเงิน
         </button>
         <button type="button" class="nav-tab" id="nav-tab-debts" onclick="switchTab('debts')">
-          ⚔️ ปลดหนี้ (Boss)
+          🪙 หนี้คงเหลือ
         </button>
         <button type="button" class="nav-tab" id="nav-tab-plan" onclick="switchTab('plan')">
           🤖 แผนการเงิน AI
@@ -1636,7 +1647,7 @@
         <div class="rpg-panel hp-battle-card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
             <div>
-              <div class="wood-pill-title" style="margin-bottom:4px;">⚔️ หลอดพลังปลดหนี้ (Rockman X Gauge)</div>
+              <div class="wood-pill-title" style="margin-bottom:4px;">🪙 ภาพรวมหนี้คงเหลือทั้งหมด</div>
               <div style="font-size:0.86rem; color:var(--text-muted);">
                 ดึงเฉพาะ Tag ที่มีก้อนหนี้จาก <strong>Transaction → 5. Tag หนี้ &amp; บิลประจำ</strong> (นับเฉพาะยอดจ่ายหลังวันที่อัปเดตล่าสุด)
               </div>
@@ -1646,6 +1657,10 @@
           <div id="debt-boss-summary"></div>
         </div>
         <div id="debt-boss-list" class="debt-boss-grid"></div>
+        <div class="rpg-panel hidden" id="debt-cleared-panel" style="margin-top: 18px;">
+          <div class="wood-pill-title">🏆 บันทึกความสำเร็จการปลดหนี้ (Achievement Log)</div>
+          <div class="tx-list" id="debt-cleared-list"></div>
+        </div>
       </div>
 
       <!-- ==================== TAB 3: AI FINANCIAL PLAN ==================== -->
@@ -3312,6 +3327,9 @@
               tag.balance = Math.max(0, Number(tag.balance) - expAmount);
               tag.updatedAt = expDate || new Date().toISOString().slice(0, 10);
               tag.reason = `หักยอดจากรายจ่าย (-${formatBaht(expAmount)})`;
+              if (tag.balance <= 0) {
+                tag.clearedAt = tag.clearedAt || tag.updatedAt;
+              }
             }
           }
         } else if (rawCat.startsWith('vault:')) {
@@ -3419,6 +3437,8 @@
           if (tag && tag.balance !== null && tag.balance !== undefined) {
             tag.balance = Math.max(0, Number(tag.balance) + oldAmt - newAmt);
             tag.updatedAt = new Date().toISOString().slice(0, 10);
+            if (tag.balance <= 0) tag.clearedAt = tag.clearedAt || tag.updatedAt;
+            else tag.clearedAt = null;
           }
         }
         if (target.vaultId) {
@@ -3860,6 +3880,7 @@
         target.anchorBalance = parsedBal;
         target.anchorDate = parsedDate;
         target.anchorTs = Date.now();
+        target.clearedAt = (parsedBal !== null && parsedBal <= 0) ? parsedDate : null;
         target.defaultPay = parsedPay;
         target.updatedAt = parsedDate;
         target.reason = nextReason.trim();
@@ -3950,6 +3971,7 @@
         const target = (user.debtTags || []).find(t => t.id === id);
         if (!target) return;
         target.balance = nextBal;
+        target.clearedAt = null;
         if (target.anchorBalance !== null && target.anchorBalance !== undefined) {
           target.anchorBalance = Number(target.anchorBalance) + addAmt;
         } else {
@@ -3977,14 +3999,27 @@
       renderFloatingReminders();
     }
 
-    function buildRockmanSegmentsHtml(paidPct, isCleared) {
-      const pct = Math.max(0, Math.min(100, Number(paidPct || 0)));
+    function getRockmanHpMeta(remPct, isCleared) {
+      if (isCleared || remPct <= 0) {
+        return { cls: '', icon: '🏆', color: '#0e7490', label: 'ปลดหนี้แล้ว' };
+      }
+      if (remPct >= 70) {
+        return { cls: 'hp-green', icon: '🟩', color: '#15803d', label: 'คงเหลือ' };
+      }
+      if (remPct >= 30) {
+        return { cls: 'hp-orange', icon: '🟧', color: '#c2410c', label: 'คงเหลือ' };
+      }
+      return { cls: 'hp-red', icon: '🟥', color: '#b91c1c', label: 'ใกล้หมดหลอด' };
+    }
+
+    function buildRockmanSegmentsHtml(remPct, isCleared) {
+      const pct = isCleared ? 0 : Math.max(0, Math.min(100, Number(remPct || 0)));
       let filled = Math.round((pct / 100) * 20);
-      if (pct > 0 && filled === 0) filled = 1;
-      if (!isCleared && filled >= 20) filled = 19;
+      if (!isCleared && pct > 0 && filled === 0) filled = 1;
+      const meta = getRockmanHpMeta(pct, isCleared);
       let html = '';
       for (let i = 0; i < 20; i++) {
-        const cls = i < filled ? (isCleared ? 'rmx-seg paid cleared' : 'rmx-seg paid') : 'rmx-seg';
+        const cls = i < filled ? `rmx-seg ${meta.cls}` : 'rmx-seg';
         html += `<div class="${cls}"></div>`;
       }
       return html;
@@ -3995,6 +4030,8 @@
       if (!u) return;
       const summaryEl = document.getElementById('debt-boss-summary');
       const listEl = document.getElementById('debt-boss-list');
+      const clearedPanel = document.getElementById('debt-cleared-panel');
+      const clearedListEl = document.getElementById('debt-cleared-list');
       if (!summaryEl || !listEl) return;
 
       const expenses = u.expenses || [];
@@ -4003,14 +4040,17 @@
       if (debtTags.length === 0) {
         summaryEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.92rem;">ยังไม่มี Tag ที่มีก้อนหนี้ (บิลรายเดือนที่ไม่ได้ระบุยอดหนี้จะไม่แสดงในหน้านี้)</div>';
         listEl.innerHTML = '';
+        if (clearedPanel) clearedPanel.classList.add('hidden');
         return;
       }
 
       let grandGoal = 0;
       let grandRemaining = 0;
       let grandPaid = 0;
+      const activeCards = [];
+      const clearedItems = [];
 
-      const cardsHtml = debtTags.map((t, idx) => {
+      debtTags.forEach((t, idx) => {
         const remaining = Math.max(0, Number(t.balance || 0));
         const anchorDate = t.anchorDate || t.updatedAt || '';
         const anchorTs = Number(t.anchorTs || 0);
@@ -4036,18 +4076,26 @@
         const isCleared = remaining <= 0;
         const paidPct = totalGoal > 0 ? Math.min(100, (paidDisplay / totalGoal) * 100) : (isCleared ? 100 : 0);
         const remPct = Math.max(0, 100 - paidPct);
+        const isYearly = t.cycle === 'yearly';
+
+        if (isCleared) {
+          const latestLogDate = validLogs.length > 0
+            ? validLogs.map(l => l.date || '').sort().slice(-1)[0]
+            : '';
+          const clearedDate = t.clearedAt || latestLogDate || t.updatedAt || new Date().toISOString().slice(0, 10);
+          clearedItems.push({ t, totalGoal, paidDisplay, clearedDate, isYearly });
+          return;
+        }
 
         grandGoal += totalGoal;
         grandRemaining += remaining;
         grandPaid += paidDisplay;
 
-        const isYearly = t.cycle === 'yearly';
         const cycleBadge = isYearly
           ? '<span style="font-size:0.72rem; color:#7c3aed; background:#f3e8ff; padding:2px 8px; border-radius:999px; font-weight:600;">🗓️ รายปี</span>'
           : '<span style="font-size:0.72rem; color:#0369a1; background:#e0f2fe; padding:2px 8px; border-radius:999px; font-weight:600;">🔄 รายเดือน</span>';
-        const statusBadge = isCleared
-          ? '<span style="font-size:0.75rem; color:#0e7490; background:#cffafe; padding:2px 9px; border-radius:999px; font-weight:700;">🏆 ปลดหนี้แล้ว!</span>'
-          : `<span style="font-size:0.75rem; color:#9a3412; background:#ffedd5; padding:2px 9px; border-radius:999px; font-weight:700;">เหลือ ${remPct.toFixed(1)}%</span>`;
+        const hpMeta = getRockmanHpMeta(remPct, false);
+        const statusBadge = `<span style="font-size:0.75rem; color:${hpMeta.color}; background:#fff7ed; border:1px solid ${hpMeta.color}33; padding:2px 9px; border-radius:999px; font-weight:700;">เหลือ ${remPct.toFixed(1)}%</span>`;
 
         const recentLogsHtml = validLogs.length === 0
           ? '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:8px;">ยังไม่มีรายการชำระหลังจากวันที่อัปเดตล่าสุด</div>'
@@ -4055,7 +4103,7 @@
               นับยอดจ่ายหลังอัปเดต (${validLogs.length} ครั้ง): ${validLogs.slice(0, 3).map(l => `${escapeHtml(formatDateDMY(l.date))} (-${formatBaht(l.amount)})`).join(' • ')}${validLogs.length > 3 ? ' ...' : ''}
             </div>`;
 
-        return `
+        activeCards.push(`
           <div class="rpg-panel" style="padding:16px;">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
               <div>
@@ -4068,33 +4116,71 @@
               </div>
               ${statusBadge}
             </div>
-            <div class="rmx-bar-outer" title="จ่ายแล้ว ${paidPct.toFixed(1)}% | คงเหลือ ${remPct.toFixed(1)}%">
-              ${buildRockmanSegmentsHtml(paidPct, isCleared)}
+            <div class="rmx-bar-outer" title="หนี้คงเหลือ ${remPct.toFixed(1)}% | ชำระแล้ว ${paidPct.toFixed(1)}%">
+              ${buildRockmanSegmentsHtml(remPct, false)}
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; font-size:0.86rem;">
-              <span style="color:#15803d; font-weight:700;">🟩 ชำระแล้ว: ${formatBaht(paidDisplay)} (${paidPct.toFixed(1)}%)</span>
-              <span style="color:#b91c1c; font-weight:700;">⬜ คงเหลือ: ${formatBaht(remaining)} (${remPct.toFixed(1)}%)</span>
+              <span style="color:${hpMeta.color}; font-weight:700;">${hpMeta.icon} หนี้คงเหลือ: ${formatBaht(remaining)} (${remPct.toFixed(1)}%)</span>
+              <span style="color:var(--text-muted); font-weight:700;">⬜ ชำระแล้ว: ${formatBaht(paidDisplay)} (${paidPct.toFixed(1)}%)</span>
             </div>
             ${recentLogsHtml}
           </div>
+        `);
+      });
+
+      if (activeCards.length === 0) {
+        summaryEl.innerHTML = `
+          <div class="rmx-bar-outer" style="height:34px; margin-bottom:10px;">
+            ${buildRockmanSegmentsHtml(0, true)}
+          </div>
+          <div style="font-size:0.95rem; color:#0e7490; font-weight:700;">
+            🏆 ยินดีด้วย! คุณชำระหนี้ครบทุกก้อนแล้ว (หนี้คงเหลือทั้งหมด ฿0)
+          </div>
         `;
-      }).join('');
+        listEl.innerHTML = '';
+      } else {
+        const grandPaidPct = grandGoal > 0 ? Math.min(100, (grandPaid / grandGoal) * 100) : 0;
+        const grandRemPct = Math.max(0, 100 - grandPaidPct);
+        const grandMeta = getRockmanHpMeta(grandRemPct, false);
 
-      const grandPaidPct = grandGoal > 0 ? Math.min(100, (grandPaid / grandGoal) * 100) : (grandRemaining <= 0 ? 100 : 0);
-      const grandRemPct = Math.max(0, 100 - grandPaidPct);
-      const allCleared = grandRemaining <= 0;
+        summaryEl.innerHTML = `
+          <div class="rmx-bar-outer" style="height:34px; margin-bottom:10px;">
+            ${buildRockmanSegmentsHtml(grandRemPct, false)}
+          </div>
+          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; font-size:0.9rem;">
+            <span>หนี้ที่กำลังผ่อน: <strong>${activeCards.length} รายการ</strong> (ตั้งต้น ${formatBaht(grandGoal)})</span>
+            <span style="color:${grandMeta.color}; font-weight:700;">${grandMeta.icon} หนี้คงเหลือรวม: ${formatBaht(grandRemaining)} (${grandRemPct.toFixed(1)}%)</span>
+            <span style="color:var(--text-muted); font-weight:700;">⬜ ชำระแล้วรวม: ${formatBaht(grandPaid)} (${grandPaidPct.toFixed(1)}%)</span>
+          </div>
+        `;
+        listEl.innerHTML = activeCards.join('');
+      }
 
-      summaryEl.innerHTML = `
-        <div class="rmx-bar-outer" style="height:34px; margin-bottom:10px;">
-          ${buildRockmanSegmentsHtml(grandPaidPct, allCleared)}
-        </div>
-        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; font-size:0.9rem;">
-          <span>ก้อนหนี้ทั้งหมด: <strong>${debtTags.length} รายการ</strong> (ตั้งต้น ${formatBaht(grandGoal)})</span>
-          <span style="color:#15803d; font-weight:700;">🟩 ชำระแล้วรวม: ${formatBaht(grandPaid)} (${grandPaidPct.toFixed(1)}%)</span>
-          <span style="color:#b91c1c; font-weight:700;">⬜ หนี้คงเหลือรวม: ${formatBaht(grandRemaining)} (${grandRemPct.toFixed(1)}%)</span>
-        </div>
-      `;
-      listEl.innerHTML = cardsHtml;
+      if (clearedPanel && clearedListEl) {
+        if (clearedItems.length === 0) {
+          clearedPanel.classList.add('hidden');
+          clearedListEl.innerHTML = '';
+        } else {
+          clearedPanel.classList.remove('hidden');
+          clearedListEl.innerHTML = clearedItems.map(item => `
+            <div class="tx-item" style="background:linear-gradient(135deg, #f0fdfa, #ecfdf5); border-color:#99f6e4;">
+              <div class="tx-left">
+                <div class="tx-icon">🏆</div>
+                <div>
+                  <div style="font-weight:700; color:#0f766e;">ปลดหนี้ "${escapeHtml(item.t.name)}" เรียบร้อยแล้ว!</div>
+                  <div class="tx-meta">
+                    ปลดหนี้เมื่อวันที่ ${escapeHtml(formatDateDMY(item.clearedDate))} • รอบบิล${item.isYearly ? 'รายปี' : 'รายเดือน'}
+                  </div>
+                </div>
+              </div>
+              <div class="tx-right">
+                <strong class="text-income">จ่ายทั้งหมด ${formatBaht(item.paidDisplay || item.totalGoal)}</strong>
+                <span style="font-size:0.75rem; background:#ccfbf1; color:#0f766e; padding:2px 9px; border-radius:999px; font-weight:700;">100%</span>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
     }
 
     function renderDebtTags() {
