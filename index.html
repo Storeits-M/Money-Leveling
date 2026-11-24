@@ -1272,6 +1272,11 @@
         <!-- CARD 1: เดือนปัจจุบัน (Current Month) -->
         <div class="rpg-panel">
           <div class="wood-pill-title" id="rep-month-title">📅 สรุปเดือนปัจจุบัน</div>
+          <div class="hp-bar-outer" aria-label="หลอดพลังชีวิตทางการเงินเดือนปัจจุบัน" style="margin-bottom: 14px;">
+            <div class="hp-bar-lost-pattern"></div>
+            <div class="hp-bar-fill" id="m-hp-battle-fill" style="width: 100%;"></div>
+            <div class="hp-bar-text" id="m-hp-battle-bar-text">HP เดือนนี้ ฿0 / ฿0 (100%)</div>
+          </div>
           <div class="stats-grid" style="margin-bottom: 16px;">
             <div class="stat-card">
               <div class="stat-label">รายรับสุทธิเดือนนี้</div>
@@ -2959,6 +2964,26 @@
 
       // Card 1: Month
       document.getElementById('rep-month-title').textContent = `📅 สรุปเดือนปัจจุบัน (${sum.curMonth})`;
+      const mRemain = sum.mTrueSave;
+      let mHpPercent = 100;
+      if (sum.mInc.net > 0) {
+        mHpPercent = Math.max(0, Math.min(100, Math.round((mRemain / sum.mInc.net) * 100)));
+      } else if (sum.mExp > 0) {
+        mHpPercent = 0;
+      }
+      const mHpFillEl = document.getElementById('m-hp-battle-fill');
+      if (mHpFillEl) {
+        mHpFillEl.style.width = `${mHpPercent}%`;
+        mHpFillEl.classList.remove('low', 'critical');
+        if (sum.mInc.net > 0 || sum.mExp > 0) {
+          if (mHpPercent < 25) mHpFillEl.classList.add('critical');
+          else if (mHpPercent < 55) mHpFillEl.classList.add('low');
+        }
+      }
+      const mHpTextEl = document.getElementById('m-hp-battle-bar-text');
+      if (mHpTextEl) {
+        mHpTextEl.textContent = `HP ${sum.curMonth}: ${formatBaht(Math.max(0, mRemain))} / ${formatBaht(sum.mInc.net)} (${mHpPercent}%)`;
+      }
       document.getElementById('m-income').textContent = formatBaht(sum.mInc.net);
       document.getElementById('m-sso-sub').textContent = `หักประกันสังคม: ${formatBaht(sum.mInc.sso)}`;
       document.getElementById('m-expense').textContent = formatBaht(sum.mExp);
