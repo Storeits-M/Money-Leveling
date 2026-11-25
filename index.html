@@ -2181,7 +2181,7 @@
     }
 
     async function fetchCloudLeaderboard() {
-      if (!fbDb || !cloudUid) return [];
+      if (!fbDb) return [];
       try {
         const snap = await fbDb.collection('leaderboard').get();
         const curMonth = getCurrentMonthKey();
@@ -5007,15 +5007,16 @@
       // Build leaderboard from Cloud (when logged in) or local users + sample members
       function renderLeaderboardRows(cloudRows) {
         let userRows = [];
-        if (cloudUid && Array.isArray(cloudRows)) {
+        if ((cloudUid || guestUserData) && Array.isArray(cloudRows) && cloudRows.length > 0) {
           userRows = cloudRows.map(c => ({
             ...c,
+            isMe: cloudUid ? c.isMe : false,
             score: rankingMode === 'monthly' ? c.monthlyScore : c.allTimeScore
           }));
           if (!userRows.some(r => r.isMe)) {
             const s = computeFinancialSummary(me);
             userRows.push({
-              id: cloudUid,
+              id: cloudUid || me.username,
               isMe: true,
               optOut: Boolean(me.optOutRanking),
               communityName: me.communityName || me.username || 'คุณ',
@@ -5113,6 +5114,11 @@
       if (cloudUid && fbDb) {
         renderLeaderboardRows(cloudLeaderboardCache);
         syncUserToCloudImmediate().then(() => fetchCloudLeaderboard()).then(rows => {
+          renderLeaderboardRows(rows);
+        });
+      } else if (guestUserData && fbDb) {
+        renderLeaderboardRows(cloudLeaderboardCache);
+        fetchCloudLeaderboard().then(rows => {
           renderLeaderboardRows(rows);
         });
       } else {
