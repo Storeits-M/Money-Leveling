@@ -1028,6 +1028,7 @@
           <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
             <button type="submit" class="btn btn-primary" style="width: 100%;">เข้าสู่ระบบ Money Leveling</button>
             <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="handleGoogleLogin()">🔵 เข้าสู่ระบบด้วย Google</button>
+            <button type="button" class="btn btn-secondary" style="width: 100%; border-style: dashed;" onclick="handleGuestLogin()">🧪 ทดลองใช้งานแบบแขก (Guest — ไม่บันทึกข้อมูล)</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="switchAuthMode('signup')">
               ยังไม่มีบัญชี? กด Sign Up เพื่อสมัครใช้งาน
             </button>
@@ -1138,6 +1139,11 @@
           <button type="button" class="btn btn-secondary btn-sm" onclick="handleLogout()">🚪 ออกจากระบบ</button>
         </div>
       </header>
+
+      <div id="guest-mode-banner" class="hidden" style="margin-bottom: 14px; padding: 10px 14px; border-radius: var(--radius-sm); background: #fef3c7; border: 2px dashed #d97706; color: #78350f; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.88rem;">
+        <span>🧪 <strong>โหมดทดลองใช้งานแบบแขก (Guest):</strong> คุณสามารถลองเพิ่ม/แก้ไข/ลบข้อมูลได้ทุกเมนู แต่ข้อมูลทั้งหมดจะ<strong>ไม่ถูกบันทึก</strong>เมื่อรีเฟรชหรือออกจากระบบ</span>
+        <button type="button" class="btn btn-primary btn-sm" onclick="exitGuestToSignup()">✨ สมัครสมาชิกเพื่อบันทึกข้อมูลจริง</button>
+      </div>
 
       <nav class="nav-tabs" aria-label="เมนูหลัก">
         <button type="button" class="nav-tab active" id="nav-tab-report" onclick="switchTab('report')">
@@ -2113,6 +2119,8 @@
       return `u_${hex}@moneyleveling.app`;
     }
 
+    let guestUserData = null;
+
     function loadUsers() {
       try { return JSON.parse(localStorage.getItem(STORAGE_USERS_KEY) || '[]'); }
       catch { return []; }
@@ -2121,6 +2129,7 @@
     function saveUsers(users) { localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users)); }
     function getCurrentUsername() { return localStorage.getItem(STORAGE_SESSION_KEY); }
     function getCurrentUser() {
+      if (guestUserData) return guestUserData;
       if (cloudUid && cloudUserData) return cloudUserData;
       const uname = getCurrentUsername();
       return uname ? loadUsers().find(u => u.username === uname) || null : null;
@@ -2203,6 +2212,10 @@
     }
 
     function updateCurrentUser(mutator) {
+      if (guestUserData) {
+        mutator(guestUserData);
+        return guestUserData;
+      }
       if (cloudUid && cloudUserData) {
         mutator(cloudUserData);
         if (Array.isArray(cloudUserData.pointLogs) && cloudUserData.pointLogs.length > 60) {
@@ -2732,13 +2745,69 @@
       }
     }
 
+    function createGuestUserData() {
+      const curMonth = getCurrentMonthKey();
+      const d1 = `${curMonth}-01`;
+      const d5 = `${curMonth}-05`;
+      const d10 = `${curMonth}-10`;
+      const nowTs = Date.now();
+      return {
+        isGuest: true,
+        username: 'guest_trial',
+        communityName: 'ผู้เยี่ยมชม (Guest)',
+        occupation: 'ทดลองใช้งาน',
+        age: 25,
+        gender: 'ไม่ระบุ',
+        avatar: '',
+        optOutRanking: true,
+        scoreRulesVersion: SCORE_RULES_VERSION,
+        incomes: [
+          { id: 'g_inc_1', date: d1, amount: 30000, sso: 875, netAmount: 29125, wht: 0, source: 'เงินเดือน', note: 'เงินเดือนตัวอย่าง' }
+        ],
+        expenses: [
+          { id: 'g_exp_1', createdAt: nowTs - 3000, amount: 5000, date: d5, category: 'บัตรเครดิต (ตัวอย่าง)', debtTagId: 'g_tag_1', vaultId: null, isVaultTransfer: false, sourceVaultId: null, sourceVaultName: '', paidFromVault: false, note: 'ชำระค่างวดบัตรตัวอย่าง' },
+          { id: 'g_exp_2', createdAt: nowTs - 2000, amount: 3000, date: d5, category: 'โอนเข้าคลัง: บัญชีออมทรัพย์ (ตัวอย่าง)', debtTagId: null, vaultId: 'g_v_1', isVaultTransfer: true, sourceVaultId: null, sourceVaultName: '', paidFromVault: false, note: 'ออมประจำเดือนตัวอย่าง' },
+          { id: 'g_exp_3', createdAt: nowTs - 1000, amount: 4500, date: d10, category: 'กินใช้ทั่วไป', debtTagId: null, vaultId: null, isVaultTransfer: false, sourceVaultId: null, sourceVaultName: '', paidFromVault: false, note: 'ค่าอาหาร/เดินทางตัวอย่าง' }
+        ],
+        vaults: [
+          { id: 'g_v_1', type: 'ฝากธนาคาร (ออมทรัพย์ / ประจำ)', name: 'บัญชีออมทรัพย์ (ตัวอย่าง)', balance: 28000, desc: 'ยอดเงินเก็บตัวอย่าง', updatedAt: d5 }
+        ],
+        debtTags: [
+          { id: 'g_tag_1', name: 'บัตรเครดิต (ตัวอย่าง)', cycle: 'monthly', dueDay: 5, dueMonth: null, balance: 15000, anchorBalance: 20000, anchorDate: d1, anchorTs: nowTs - 10000, defaultPay: 5000, updatedAt: d5, reason: 'ยอดตั้งต้นตัวอย่าง' },
+          { id: 'g_tag_2', name: 'ค่าเน็ต (ตัวอย่าง)', cycle: 'monthly', dueDay: 25, dueMonth: null, balance: null, anchorBalance: null, anchorDate: d1, anchorTs: nowTs - 10000, defaultPay: 599, updatedAt: d1, reason: 'บิลรายเดือนตัวอย่าง' }
+        ],
+        reminders: [
+          { id: 'rem_tag_g_tag_1', debtTagId: 'g_tag_1', category: 'pay', title: 'บัตรเครดิต (ตัวอย่าง)', amount: 5000, mode: 'monthly', day: 5, yearlyDay: 5, yearlyMonth: 1, date: '', paidMonths: [curMonth] },
+          { id: 'rem_tag_g_tag_2', debtTagId: 'g_tag_2', category: 'pay', title: 'ค่าเน็ต (ตัวอย่าง)', amount: 599, mode: 'monthly', day: 25, yearlyDay: 25, yearlyMonth: 1, date: '', paidMonths: [] }
+        ],
+        taxProfile: { lifeIns: 0, funds: 0, homeLoan: 0, family: 0 },
+        pointLogs: []
+      };
+    }
+
+    function handleGuestLogin() {
+      cloudUid = null;
+      cloudUserData = null;
+      localStorage.removeItem(STORAGE_SESSION_KEY);
+      guestUserData = createGuestUserData();
+      showToast('🧪 เข้าสู่โหมดทดลองใช้งานแบบแขก (ไม่บันทึกข้อมูล)');
+      enterDashboard();
+    }
+
+    function exitGuestToSignup() {
+      handleLogout();
+      switchAuthMode('signup');
+    }
+
     async function handleLogout() {
       if (fbAuth && fbAuth.currentUser) {
         await fbAuth.signOut().catch(() => {});
       }
+      guestUserData = null;
       cloudUid = null;
       cloudUserData = null;
       localStorage.removeItem(STORAGE_SESSION_KEY);
+      document.getElementById('guest-mode-banner')?.classList.add('hidden');
       document.getElementById('dashboard-view').classList.add('hidden');
       document.getElementById('floating-reminder-box').classList.add('hidden');
       document.getElementById('auth-view').classList.remove('hidden');
@@ -2872,6 +2941,7 @@
       if (!user) return;
       document.getElementById('auth-view').classList.add('hidden');
       document.getElementById('dashboard-view').classList.remove('hidden');
+      document.getElementById('guest-mode-banner')?.classList.toggle('hidden', !guestUserData);
 
       const today = new Date();
       const yyyy = today.getFullYear();
