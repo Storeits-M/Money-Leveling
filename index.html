@@ -1028,7 +1028,7 @@
           <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
             <button type="submit" class="btn btn-primary" style="width: 100%;">เข้าสู่ระบบ Money Leveling</button>
             <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="handleGoogleLogin()">🔵 เข้าสู่ระบบด้วย Google</button>
-            <button type="button" class="btn btn-secondary" style="width: 100%; border-style: dashed;" onclick="handleGuestLogin()">🧪 ทดลองใช้งานแบบแขก (Guest — ไม่บันทึกข้อมูล)</button>
+            <button type="button" class="btn btn-secondary" style="width: 100%; border-style: dashed;" onclick="handleGuestLogin()">🧪 ทดลองใช้งาน (ไม่บันทึกข้อมูล)</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="switchAuthMode('signup')">
               ยังไม่มีบัญชี? กด Sign Up เพื่อสมัครใช้งาน
             </button>
@@ -2759,7 +2759,7 @@
         age: 25,
         gender: 'ไม่ระบุ',
         avatar: '',
-        optOutRanking: true,
+        optOutRanking: false,
         scoreRulesVersion: SCORE_RULES_VERSION,
         incomes: [
           { id: 'g_inc_1', date: d1, amount: 30000, sso: 875, netAmount: 29125, wht: 0, source: 'เงินเดือน', note: 'เงินเดือนตัวอย่าง' }
@@ -5046,6 +5046,21 @@
                 score: rankingMode === 'monthly' ? r.monthlyScore : r.allTimeScore
               };
             });
+          if (guestUserData && !userRows.some(r => r.isMe)) {
+            const s = computeFinancialSummary(me);
+            userRows.push({
+              id: me.username,
+              isMe: true,
+              optOut: false,
+              communityName: me.communityName || 'ผู้เยี่ยมชม (Guest)',
+              occupation: me.occupation || 'ทดลองใช้งาน',
+              age: getUserAgeDisplay(me),
+              avatar: me.avatar || '',
+              savingsRate: s.mSaveRate,
+              yearlyScore: myRank.yearlyScore,
+              score: rankingMode === 'monthly' ? myRank.monthlyScore : myRank.allTimeScore
+            });
+          }
         }
 
         const samples = SAMPLE_MEMBERS.map(m => {
